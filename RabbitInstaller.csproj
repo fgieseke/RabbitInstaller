@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FluentCommandLineParser, Version=1.4.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\FluentCommandLineParser.1.4.3\lib\net35\FluentCommandLineParser.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Diagnostics.Tracing.EventSource, Version=1.1.28.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Diagnostics.Tracing.EventSource.Redist.1.1.28\lib\net46\Microsoft.Diagnostics.Tracing.EventSource.dll</HintPath>
     </Reference>
@@ -56,12 +59,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Infrastructure\BaseMessage.cs" />
+    <Compile Include="Infrastructure\Enums.cs" />
+    <Compile Include="Infrastructure\EnvironmentConfig.cs" />
     <Compile Include="Infrastructure\ISimulationConsumer.cs" />
     <Compile Include="Infrastructure\ISimulationPublisher.cs" />
     <Compile Include="Infrastructure\ModelBuilder.cs" />
     <Compile Include="Infrastructure\BusClientFactory.cs" />
     <Compile Include="Infrastructure\MessageSerializer.cs" />
     <Compile Include="Infrastructure\ModelConfig.cs" />
+    <Compile Include="Infrastructure\ScenarioConfigFile.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Infrastructure\SimulationPublisher.cs" />
@@ -69,7 +75,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="scenarios.json" />
+    <None Include="environment.json" />
     <None Include="packages.config" />
+    <None Include="setup3.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="setup2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="setup.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

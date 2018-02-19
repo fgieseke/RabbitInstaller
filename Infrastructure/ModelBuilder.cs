@@ -2,14 +2,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Newtonsoft.Json;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using RawRabbit;
-using RawRabbit.Common;
-using RawRabbit.Configuration;
 using RawRabbit.Configuration.Exchange;
 using RawRabbit.Configuration.Queue;
 
@@ -27,6 +21,8 @@ namespace RabbitInstaller.Infrastructure
         private readonly List<ISimulationPublisher> _simulationPublishers;
         private readonly List<ISimulationConsumer> _simulationConsumers;
 
+        private static Dictionary<string, ExchangeConfiguration> _exchangeMap;
+
         /// <summary>
         /// Builds a modlel according to the setup.json file
         /// </summary>
@@ -41,6 +37,7 @@ namespace RabbitInstaller.Infrastructure
             _model = connection.CreateModel();
             _simulationPublishers = new List<ISimulationPublisher>();
             _simulationConsumers = new List<ISimulationConsumer>();
+            _exchangeMap = new Dictionary<string, ExchangeConfiguration>();
         }
 
         public IModel Model => _model;
@@ -49,6 +46,8 @@ namespace RabbitInstaller.Infrastructure
         {
             try
             {
+                _exchangeMap.Add(exchangeConfig.ExchangeName, exchangeConfig);
+
                 Console.Write($"Creating exchange '{exchangeConfig.ExchangeName}'...");
 
                 _model.ExchangeDeclare(exchangeConfig.ExchangeName, exchangeConfig.ExchangeType.ToLower(), exchangeConfig.Durable, exchangeConfig.AutoDelete, exchangeConfig.Arguments);
@@ -81,27 +80,36 @@ namespace RabbitInstaller.Infrastructure
             }
         }
 
-        public ModelBuilder BindExchange(string exchangeName, IEnumerable<BindingModelConfig> bindings)
+        public ModelBuilder BindExchange(string exchangeName, ExchangeBindingConfiguration[] bindings)
         {
             try
             {
                 foreach (var binding in bindings)
                 {
-                    foreach (var routingKey in binding.RoutingKeys)
-                    {
-                        Console.Write($"Bind routingKey '{routingKey}' to ");
+                    if (binding.ExchangeName == null)
+                        continue;
 
-                        if (binding.QueueName != null)
+                    if (binding.RoutingKeys != null)
+                    {
+                        foreach (var routingKey in binding.RoutingKeys)
                         {
-                            Console.Write($"queue '{binding.QueueName}' on exchange '{exchangeName}' ...");
-                            _model.QueueBind(binding.QueueName, exchangeName, routingKey, binding.Arguments);
-                        }
-                        if (binding.ExchangeName != null)
-                        {
-                            Console.Write($"exchange '{binding.ExchangeName}' on exchange '{exchangeName}' ...");
+                            Console.Write(
+                                $"Add binding from exchange '{exchangeName}' to exchange '{binding.ExchangeName}' with routingKey '{routingKey}' ...");
                             _model.ExchangeBind(binding.ExchangeName, exchangeName, routingKey, binding.Arguments);
+                            Console.WriteLine(" Done!");
+
                         }
-                        Console.WriteLine(" Done!");
+                    }
+                    else if (binding.Arguments != null)
+                    {
+                        Console.Write(
+                            $"Add binding from exchange '{exchangeName}' to exchange '{binding.ExchangeName}' with arguments: ");
+                        foreach (var argument in binding.Arguments)
+                        {
+                            Console.Write($"'{argument.Key} : {argument.Value}'; ");
+                            _model.ExchangeBind(binding.ExchangeName, exchangeName, "", binding.Arguments);
+                        }
+                        Console.WriteLine("Done!");
                     }
                 }
                 return this;

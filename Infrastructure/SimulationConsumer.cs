@@ -35,7 +35,7 @@ namespace RabbitInstaller.Infrastructure
                 var newRoutingKey = TransformRoutingKey(e.RoutingKey, _consumerPublish.RoutingKey);
                 _model.BasicPublish(exchange: _consumerPublish.ExchangeName,
                     routingKey: newRoutingKey,
-                    basicProperties: null,
+                    basicProperties: e.BasicProperties,
                     body: body);
                 Console.WriteLine($"[{_name}] Routed message to '{_consumerPublish.ExchangeName}' with key: {newRoutingKey}");
             }
@@ -46,9 +46,9 @@ namespace RabbitInstaller.Infrastructure
         {
             var key = publishRoutingKey;
             var parts = originalRoutingKey.Split('.');
-            key = key.Replace("{documentType}", parts.Length > 1 ? parts[1] : "");
-            key = key.Replace("{origin}", parts.Length > 2 ? parts[2] : "");
-            key = key.Replace("{action}", parts.Length > 3 ? parts[3] : "");
+            key = key.Replace("{documentType}", parts.Length > 1 ? parts[1] : "*");
+            key = key.Replace("{origin}", parts.Length > 2 ? parts[2] : "*");
+            key = key.Replace("{action}", parts.Length > 3 ? parts[3] : "*");
             return key;
         }
 
@@ -65,5 +65,5 @@ namespace RabbitInstaller.Infrastructure
             Consumer.Received -= Consume;
         }
 
-    }
+        }
 }

@@ -1,0 +1,130 @@
+﻿{
+  "scenarios": [
+    {
+      "name": "agency-create",
+      "environment": [ "Translator:Text"],
+      "emitter": {
+        "exchangeName": "Emitter",
+        "routingKey": "raw.text.abc.create"
+      },
+      "routers": ["Translator:create"]
+    },
+    {
+      "name": "VideoBulk",
+      "environment": "Video",
+      "publishers": [
+        {
+          "name": "Emitter.Newsroom-Bulk",
+          "exchangeName": "Emitter",
+          "routingKey": "raw.video.newsroom.bulk",
+          "messageCount": 1,
+          "period": 1000
+        }
+      ]
+    },
+    {
+      "name": "VideoCreate",
+      "publishers": [
+        {
+          "name": "Emitter.Newsroom-Create",
+          "exchangeName": "Emitter",
+          "routingKey": "raw.video.newsroom.create",
+          "messageCount": 1,
+          "period": 1000
+        }
+      ]
+    },
+    {
+      "name": "VideoDelete",
+      "publishers": [
+        {
+          "name": "Emitter.Newsroom-Delete",
+          "exchangeName": "Emitter",
+          "routingKey": "raw.video.newsroom.delete",
+          "messageCount": 1,
+          "period": 1000
+        }
+      ]
+    }
+
+  ]
+}
+
+
+
+//"consumers": [
+//  //{
+//  //  "name": "Translator-Video-{origin}-Worker",
+//  //  "instances": 1,
+//  //  "binding": {
+//  //    "exchangeName": "Translator",
+//  //    "documentType": "video",
+//  //    "origins": [ "vpms" ]
+//  //  },
+//  //  "publish": {
+//  //    "exchangeName": "Document",
+//  //    "routingKey": "doc.*.*.create"
+//  //  }
+//  //},
+//  //{
+//  //  "name": "EnricherCache-Refresh-Worker",
+//  //  "instances": 1,
+//  //  "binding": {
+//  //    "exchangeName": "EnricherCache",
+//  //    "documentType": null,
+//  //    "origins": null,
+//  //    "action": "Refresh"
+//  //  },
+//  //  "publish": {
+//  //    "exchangeName": "Document",
+//  //    "routingKey": "doc.*.*.refresh"
+//  //  }
+//  //},
+//  {
+//    "name": "IndexerCreate-Worker",
+//    "instances": 1,
+//    "queueNames": [ "Index_Create" ],
+//    "publish": {
+//      "exchangeName": "Document",
+//      "routingKey": "doc.{documentType}.{origin}.index"
+//    }
+//  },
+//  {
+//    "name": "IndexerUpdate-Worker",
+//    "instances": 1,
+//    "queueNames": [ "Index_Update" ]
+//  },
+//  {
+//    "name": "EnricherKitKeywords-Worker",
+//    "instances": 1,
+//    "queueNames": [ "Enricher-KitKeywords" ],
+//    "publish": {
+//      "exchangeName": "PartialDocument",
+//      "origins": [ "KitKeywords" ],
+//      "routingKey": "partial.*.*.enrich"
+//    }
+//  },
+//  {
+//    "name": "EnricherAgencyProperties-Worker",
+//    "instances": 1,
+//    "queueNames": [ "Enricher_AgencyProperties" ],
+//    "publish": {
+//      "exchangeName": "PartialDocument",
+//      "origins": "AgencyProperties",
+//      "routingKey": "partial.*.*."
+//    }
+//  },
+//  {
+//    "name": "EnricherCache_Writer-Worker",
+//    "instances": 1,
+//    "queueNames": [ "EnricherCache_Writer" ]
+//  },
+//  {
+//    "name": "EnricherCache_Updater-Worker",
+//    "instances": 1,
+//    "queueNames": [ "EnricherCache_Updater" ],
+//    "publish": {
+//      "exchangeName": "Document",
+//      "routingKey": "doc.*.*.refresh"
+//    }
+//  }

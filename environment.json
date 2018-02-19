@@ -1,0 +1,64 @@
+﻿{
+  "environment": [
+    {
+      "exchangeName": "Translator",
+      "queueName": "{exchangeName}-{documentType}-{origin}-Queue",
+      "variants": [
+        {
+          "name": "Text",
+          "consumer": [
+            {
+              "binding": {
+                "routingKeys": [ "raw.text.xyz.create" ]
+              }
+            }
+          ],
+          "router": [
+            {
+              "binding": {
+                "routingKeys": [ "raw.text.abc.create", "raw.text.dpa.create" ]
+              },
+              "modes": [
+                {
+                  "name": "create",
+                  "exchangeName": "Document",
+                  "routingKey": "doc.*.*.create"
+                },
+                {
+                  "name": "delete",
+                  "exchangeName": "Document",
+                  "RoutingKey": "doc.*.*.delete"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "exchangeName": "Enricher",
+      "queueName": "{exchangeName}-{documentType}-{origin}-Queue",
+      "variants": [
+        {
+          "name": "KitKeyword",
+          "routers": [
+            {
+              "binding": {
+                "routingKeys": [ "doc.*.*.indexed"],
+                "documentType": "video",
+                "origins": [ "KitKeyword" ]
+              }
+            }
+          ],
+          "modes": [
+            {
+              "name": "enrich",
+              "exchangeName": "PartialDocument",
+              "RoutingKey": "partial.*.*.enrich"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
