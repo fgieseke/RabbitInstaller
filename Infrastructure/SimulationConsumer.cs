@@ -28,7 +28,10 @@ namespace RabbitInstaller.Infrastructure
         {
             var body = e.Body;
             var message = Encoding.UTF8.GetString(body);
+            var color = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"[{_name}] Received message from exchange '{e.Exchange}' with routingkey '{e.RoutingKey}' : {message}.");
+            Console.ForegroundColor = color;
 
             if (_consumerPublish != null)
             {
@@ -37,19 +40,25 @@ namespace RabbitInstaller.Infrastructure
                     routingKey: newRoutingKey,
                     basicProperties: e.BasicProperties,
                     body: body);
+                var fcolor = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Blue;
                 Console.WriteLine($"[{_name}] Routed message to '{_consumerPublish.ExchangeName}' with key: {newRoutingKey}");
+                Console.ForegroundColor = fcolor;
             }
 
         }
 
         private string TransformRoutingKey(string originalRoutingKey, string publishRoutingKey)
         {
-            var key = publishRoutingKey;
             var parts = originalRoutingKey.Split('.');
-            key = key.Replace("{documentType}", parts.Length > 1 ? parts[1] : "*");
-            key = key.Replace("{origin}", parts.Length > 2 ? parts[2] : "*");
-            key = key.Replace("{action}", parts.Length > 3 ? parts[3] : "*");
-            return key;
+            var newParts = publishRoutingKey.Split('.');
+            var newKeyParts = new System.Collections.Generic.List<string>();
+
+            for (var i = 0; i < newParts.Length; i++)
+            {
+                newKeyParts.Add(newParts[i] == "*" ? parts[i] : newParts[i]);
+            }
+            return string.Join(".",  newKeyParts);
         }
 
         public EventingBasicConsumer Consumer { get; }
@@ -65,5 +74,5 @@ namespace RabbitInstaller.Infrastructure
             Consumer.Received -= Consume;
         }
 
-        }
+    }
 }

@@ -6,6 +6,10 @@ using Newtonsoft.Json;
 using RabbitInstaller.Infrastructure;
 using RawRabbit.Common;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.Policy;
+using System.Threading;
+using System.Threading.Tasks;
 using Fclp.Internals.Extensions;
 using RabbitMQ.Client;
 
@@ -21,7 +25,7 @@ namespace RabbitInstaller
 
         static void Main(string[] args)
         {
-
+            _subscribers = new List<SimulationConsumer>();
             var serviceBusConfig = ConfigurationManager.ConnectionStrings["RabbitMqConnection"];
             var configuration = ConnectionStringParser.Parse(serviceBusConfig.ConnectionString);
             configuration.RouteWithGlobalId = false;
@@ -34,10 +38,12 @@ namespace RabbitInstaller
 
                 try
                 {
-                    while (true)
+                    Console.WriteLine("RabbitCLI> type 'help' or '?' for command list.");
+                    bool isRunning = true;
+                    while (isRunning)
                     {
 
-                        Console.Write("RabbitSim> ");
+                        Console.Write("RabbitCLI> ");
                         var command = Console.ReadLine();
                         if (command == null)
                             break;
@@ -45,10 +51,14 @@ namespace RabbitInstaller
                         var actions = command?.Split(' ');
                         switch (actions[0])
                         {
+                            case "?":
                             case "help":
-                                Console.WriteLine("run scenario-name: runs a scenario");
-                                Console.WriteLine("setup: Setup Infrastructure");
-                                Console.WriteLine("cleanup: Cleanup Infrastructure: Removes all defined Exchanges!");
+                                Console.WriteLine("run <scenario-name>  : runs a scenario");
+                                Console.WriteLine("setup                : Setup infrastructure");
+                                Console.WriteLine("sc or scenarios      : List of scenarios");
+                                Console.WriteLine("cleanup              : Cleanup infrastructure: Removes all defined exchanges!");
+                                Console.WriteLine("x or exit            : exits CLI");
+                                Console.WriteLine("cls                  : console clear");
                                 break;
                             case "cls":
                                 Console.Clear();
@@ -56,8 +66,12 @@ namespace RabbitInstaller
                             case "setup":
                                 SetupModel(connection, _modelConfig);
                                 break;
+                            case "sc":
+                            case "scenarios":
+                                ListScenarios();
+                                break;
                             case "cleanup":
-                                CleanupModel(connection, _modelConfig, _lastScenario);
+                                CleanupModel(connection, _modelConfig);
                                 break;
                             case "run":
                                 if (actions.Length < 2)
@@ -69,6 +83,11 @@ namespace RabbitInstaller
                                     RunScenario(connection, actions[1]);
                                 }
                                 break;
+                            case "x":
+                            case "exit":
+                                isRunning = false;
+                                break;
+
                         }
 
                     }
@@ -88,9 +107,46 @@ namespace RabbitInstaller
 
         }
 
-        private static void CleanupModel(IConnection connection, ModelConfig modelConfig, string lastScenario)
+        private static void ListScenarios()
         {
-            throw new NotImplementedException();
+            var scenarioConfigFile = LoadJson<ScenarioConfigFile>("scenarios.json");
+            if (scenarioConfigFile == null)
+            {
+                Console.WriteLine("Missing file 'scenarios.json'.");
+                return;
+            }
+
+            foreach (var scenario in scenarioConfigFile.Scenarios)
+            {
+                Console.WriteLine($"- {scenario.Name}");
+                if (scenario.Environments == null)
+                    continue;
+                foreach (var env in scenario.Environments)
+                {
+                    Console.WriteLine($"    - {env}");
+                }
+            }
+        }
+
+        private static void CleanupModel(IConnection connection, ModelConfig modelConfig)
+        {
+            using (var modelBuilder = new ModelBuilder(connection))
+            {
+                // now unbind the Out-Exchanges
+                foreach (var exchangeConfig in modelConfig.Exchanges.Where(e =>
+                    e.Direction == Enums.Exchange.Direction.Out))
+                {
+                    modelBuilder.UnbindExchange(exchangeConfig.ExchangeName, exchangeConfig.Binding.Exchanges);
+                }
+
+                // delete all Exchanges 
+                foreach (var exchangeConfig in modelConfig.Exchanges)
+                {
+                    modelBuilder.DeleteExchange(exchangeConfig);
+                }
+
+            }
+
         }
 
         private static void SetupModel(IConnection connection, ModelConfig modelConfig)
@@ -147,7 +203,7 @@ namespace RabbitInstaller
         {
             var envConfigFile = LoadJson<EnvironmentConfigFile>("environment.json");
             var scenarioConfigFile = LoadJson<ScenarioConfigFile>("scenarios.json");
-            if (_lastScenario != null && _lastScenario != scenarioName && !CleanUpScenario(envConfigFile.Environment, scenarioConfigFile, _lastScenario))
+            if (_lastScenario != null && _lastScenario != scenarioName && !CleanUpScenario(envConfigFile.Environments, scenarioConfigFile, _lastScenario))
                 return;
 
             _lastScenario = scenarioName;
@@ -167,74 +223,81 @@ namespace RabbitInstaller
                 return;
             }
 
-            using (var modelBuilder = new ModelBuilder(connection))
+            try
             {
-                var queueBinds = SetupEnvironment(modelBuilder.Model, envConfigFile.Environment, scenario.Environment);
-                SubscribeRouters(scenario.Router);
-                foreach (var queueBind in queueBinds)
+                using (var modelBuilder = new ModelBuilder(connection))
                 {
-                    var routingParts = queueBind.RoutingKey.Split('.');
-                    var consumerName = $"{queueBind.ExchangeName}-{routingParts[1]}-{routingParts[2]}-Consumer";
-                    SimulationConsumer simConsumer = new SimulationConsumer(modelBuilder.Model, consumerName, queueBind.QueueName);
-                    _subscribers.Add(simConsumer);
-                }
+                    SetupEnvironment(modelBuilder.Model, envConfigFile.Environments, scenario.Environments);
+                    foreach (var subscriber in _subscribers)
+                    {
+                        subscriber.Start();
+                    }
 
-                RunEmitter(scenario.Emitter);
+                    StartEmitter(modelBuilder.Model, scenario.Emitter);
+                    Thread.Sleep(2000);
+                    Console.WriteLine("Hit return when last message was received.");
+                    Console.ReadLine();
+
+                    Console.Write("Unsubscribing consumers...");
+                    foreach (var subscriber in _subscribers)
+                    {
+                        subscriber.Stop();
+                    }
+                    _subscribers.Clear();
+                    Console.WriteLine("Done!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
             }
         }
-        private static IEnumerable<QueueBindingInfo> SetupEnvironment(IModel channel, EnvironmentConfig[] envConfigs, string[] environments)
-        {
-            var list = new List<QueueBindingInfo>();
 
+        private static void SetupEnvironment(IModel channel, EnvironmentConfig[] envConfigs, EnvironmentElement[] environments)
+        {
+            Console.WriteLine("Setting up environments... ");
             foreach (var env in environments)
             {
-                var envSplit = env.Split(':');
-                var envExchangeName = envSplit[0];
-                var envVariant = envSplit.Length > 1 ? envSplit[1] : null;
-                var envFound = envConfigs.FirstOrDefault(e => e.ExchangeName == envExchangeName);
+                var envFound = envConfigs.FirstOrDefault(e => e.ExchangeName == env.ExchangeName);
                 if (envFound?.Variants == null || !envFound.Variants.Any())
-                {
-                    Console.WriteLine($"Could not find environment '{envExchangeName}'.");
-                    continue;
-                }
-                var envFoundExchangeName = envFound.ExchangeName;
-                if (envFoundExchangeName == null)
-                {
-                    Console.WriteLine($"Could not find exchange '{envExchangeName}' in environmentConfig.");
-                    continue;
-                }
+                    throw new ConfigurationErrorsException($"Could not find exchange '{env.ExchangeName}' in environmentConfig.");
 
                 foreach (var variant in envFound.Variants)
                 {
-                    if (envVariant != null && variant.Name != envVariant)
+                    if (env.Variant != null && variant.Name != env.Variant)
                         continue;
 
-                    if (variant.Consumer != null && variant.Consumer.Any())
+                    if (variant.Consumer != null)
                     {
-                        foreach (var consumerElement in variant.Consumer)
+                        foreach (var routingKey in variant.Consumer.Binding.RoutingKeys)
                         {
-                            foreach (var routingKey in consumerElement.Binding.RoutingKeys)
-                            {
-                                var queueBinding = DeclareAndBindQueues(channel, envFoundExchangeName, envFound.QueueName, routingKey);
-                                list.Add(queueBinding);
-                            }
+                            var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, envFound.QueueName, routingKey);
+                            var sim = new SimulationConsumer(channel, $"{queueBinding.RoutingKey}-Consumer", queueBinding.QueueName);
+                            _subscribers.Add(sim);
                         }
                     }
-                    if (variant.Router != null && variant.Router.Any())
+                    if (variant.Router != null)
                     {
-                        foreach (var routerElement in variant.Router)
+                        foreach (var routingKey in variant.Router.Binding.RoutingKeys)
                         {
-                            foreach (var routingKey in routerElement.Binding.RoutingKeys)
+                            var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, envFound.QueueName, routingKey);
+                            if (variant.Router.Publish != null)
                             {
-                                var queueBinding = DeclareAndBindQueues(channel, envFoundExchangeName, envFound.QueueName,routingKey);
-                                list.Add(queueBinding);
+                                var mode = variant.Router.Publish.Modes.FirstOrDefault(m => m.Name == env.RoutingMode);
+                                if (mode == null)
+                                    throw new ConfigurationErrorsException($"Could not find routing mode '{env.RoutingMode}' in environmentConfig.");
+
+                                var sim = new SimulationConsumer(channel, $"{queueBinding.RoutingKey}-Consumer", queueBinding.QueueName, new ConsumerPublishConfig
+                                {
+                                    ExchangeName = variant.Router.Publish.ExchangeName,
+                                    RoutingKey =   mode.RoutingKey
+                                });
+                                _subscribers.Add(sim);
                             }
                         }
                     }
                 }
             }
-
-            return list;
         }
 
         private static QueueBindingInfo DeclareAndBindQueues(IModel channel, string exchangeName, string queueName, string routingKey, Dictionary<string, object> arguments = null)
@@ -244,15 +307,15 @@ namespace RabbitInstaller
             var queueName2Bind = ReplacePlaceHolder(queueName, routingParts);
             channel.QueueDeclare(queueName2Bind, durable: true, autoDelete: false, exclusive: false);
 
-            channel.QueueBind(queueName, exchangeName, routingKey, arguments);
+            channel.QueueBind(queueName2Bind, exchangeName, routingKey, arguments);
+            channel.QueuePurge(queueName2Bind);
 
             var qBind = new QueueBindingInfo
             {
                 ExchangeName = exchangeName,
-                QueueName = queueName,
+                QueueName = queueName2Bind,
                 RoutingKey = routingKey,
                 Arguments = arguments
-
             };
 
             return qBind;
@@ -268,21 +331,20 @@ namespace RabbitInstaller
             return replacedString;
         }
 
-        private static void SubscribeConsumer(ModelBuilder consumer, ConsumerElement variantConsumer)
+
+        private static void StartEmitter(IModel channel, EmitterConfig scenarioEmitter)
         {
-            throw new NotImplementedException();
+            foreach (var routingKey in scenarioEmitter.RoutingKeys)
+            {
+                Console.WriteLine($"Hit return to start emitting message with routingkey '{routingKey}'");
+                Console.ReadLine();
+                var simEmit = new SimulationEmitter(channel, scenarioEmitter.ExchangeName, routingKey);
+                simEmit.Start();
+                Thread.Sleep(2000);
+            }
+            
         }
 
-        private static void RunEmitter(EmitterConfig scenarioEmitter)
-        {
-            throw new NotImplementedException();
-        }
-
-        private static void SubscribeRouters(string[] scenarioRouter)
-        {
-
-
-        }
 
 
 

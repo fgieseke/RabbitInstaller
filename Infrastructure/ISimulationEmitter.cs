@@ -1,8 +1,7 @@
 ﻿namespace RabbitInstaller.Infrastructure
 {
-    public interface ISimulationPublisher
+    public interface ISimulationEmitter
     {
         void Start();
-        void Stop();
     }
 }

@@ -59,24 +59,31 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Infrastructure\BaseMessage.cs" />
+    <Compile Include="Infrastructure\ConsumerPublishConfig.cs" />
     <Compile Include="Infrastructure\Enums.cs" />
     <Compile Include="Infrastructure\EnvironmentConfig.cs" />
     <Compile Include="Infrastructure\ISimulationConsumer.cs" />
-    <Compile Include="Infrastructure\ISimulationPublisher.cs" />
+    <Compile Include="Infrastructure\ISimulationEmitter.cs" />
     <Compile Include="Infrastructure\ModelBuilder.cs" />
     <Compile Include="Infrastructure\BusClientFactory.cs" />
     <Compile Include="Infrastructure\MessageSerializer.cs" />
     <Compile Include="Infrastructure\ModelConfig.cs" />
+    <Compile Include="Infrastructure\PublisherConfig.cs" />
+    <Compile Include="Infrastructure\QueueBindingInfo.cs" />
     <Compile Include="Infrastructure\ScenarioConfigFile.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Infrastructure\SimulationPublisher.cs" />
+    <Compile Include="Infrastructure\SimulationEmitter.cs" />
     <Compile Include="Infrastructure\SimulationConsumer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="scenarios.json" />
-    <None Include="environment.json" />
+    <None Include="scenarios.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="environment.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
     <None Include="setup3.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

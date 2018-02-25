@@ -2,7 +2,7 @@
 {
     public class EnvironmentConfigFile
     {
-        public EnvironmentConfig[] Environment { get; set; }
+        public EnvironmentConfig[] Environments { get; set; }
     }
 
     public class EnvironmentConfig
@@ -16,14 +16,19 @@
     public class VariantElement
     {
         public string Name { get; set; }
-        public ConsumerElement[] Consumer { get; set; }
-        public RouterElement[] Router { get; set; }
+        public ConsumerElement Consumer { get; set; }
+        public RouterElement Router { get; set; }
     }
 
     public class RouterElement : ConsumerElement
     {
-        public RouterMode[] Modes { get; set; }
+        public PublishElement Publish { get; set; }
+    }
 
+    public class PublishElement
+    {
+        public RouterMode[] Modes { get; set; }
+        public string ExchangeName { get; set; }
     }
 
     public class ConsumerElement 
@@ -40,7 +45,6 @@
     public class RouterMode
     {
         public string Name { get; set; }
-        public string ExchangeName { get; set; }
         public string RoutingKey { get; set; }
     }
 }

@@ -37,79 +37,36 @@ namespace RabbitInstaller.Infrastructure
     public class Scenario
     {
         private string[] _router;
-        private string[] _environment;
+        private string[] _environments;
         private Dictionary<string, string> _routerMapMode = new Dictionary<string, string>();
         private Dictionary<string, string> _envMapMode = new Dictionary<string, string>();
         public string Name { get; set; }
 
-        public string[] Environment
-        {
-            get => _environment;
-            set
-            {
-                _environment = value;
-                foreach (var envMode in _environment)
-                {
-                    var envModeSplit = envMode.Split(':');
-                    if (envModeSplit.Length == 2)
-                    {
-                        _envMapMode[envModeSplit[0]] = envModeSplit[1];
-                    }
-                }
-            }
-        }
+        public EnvironmentElement[] Environments { get; set; }
 
         public EmitterConfig Emitter { get; set; }
 
-        public string[] Router
-        {
-            get => _router;
-            set
-            {
-                _router = value; 
-                foreach (var routerMode in _router)
-                {
-                    var routerModeSplit = routerMode.Split(':');
-                    if (routerModeSplit.Length == 2)
-                    {
-                        _routerMapMode[routerModeSplit[0]] = routerModeSplit[1];
-                    }
-                }
-            }
-        }
+    }
 
-
-        //public Dictionary<string, RouterMode> RouterModes => _envMapMode;
+    public class EnvironmentElement
+    {
+        public string ExchangeName { get; set; }
+        public string Variant { get; set; }
+        public string RoutingMode { get; set; }
 
     }
 
     public class EmitterConfig
     {
         public string ExchangeName { get; set; }
-        public string RoutingKey { get; set; }
+        public string[] RoutingKeys { get; set; }
     }
 
-    public class PublisherConfig
-    {
-        public string Name { get; set; }
-        public string ExchangeName { get; set; }
-
-        public string RoutingKey { get; set; }
-        public int MessageCount { get; set; }
-        public int Period { get; set; }
-    }
-
-    public class ConsumerConfig
-    {
-        public string Name { get; set; }
-        public int Instances { get; set; }
-        public string[] QueueNames { get; set; }
-        public ConsumerPublishConfig Publish { get; set; }
-    }
-
-    public class ConsumerPublishConfig
-    {
-        public string ExchangeName { get; set; }
-        public string RoutingKey { get; set; }
-    }
+    //public class ConsumerConfig
+    //{
+    //    public string Name { get; set; }
+    //    public int Instances { get; set; }
+    //    public string[] QueueNames { get; set; }
+    //    public ConsumerPublishConfig Publish { get; set; }
+    //}
 }

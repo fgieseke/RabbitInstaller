@@ -18,7 +18,7 @@ namespace RabbitInstaller.Infrastructure
     public class ModelBuilder : IDisposable
     {
         private readonly IModel _model;
-        private readonly List<ISimulationPublisher> _simulationPublishers;
+        private readonly List<ISimulationEmitter> _simulationPublishers;
         private readonly List<ISimulationConsumer> _simulationConsumers;
 
         private static Dictionary<string, ExchangeConfiguration> _exchangeMap;
@@ -35,7 +35,7 @@ namespace RabbitInstaller.Infrastructure
         public ModelBuilder(IConnection connection)
         {
             _model = connection.CreateModel();
-            _simulationPublishers = new List<ISimulationPublisher>();
+            _simulationPublishers = new List<ISimulationEmitter>();
             _simulationConsumers = new List<ISimulationConsumer>();
             _exchangeMap = new Dictionary<string, ExchangeConfiguration>();
         }
@@ -51,7 +51,6 @@ namespace RabbitInstaller.Infrastructure
                 Console.Write($"Creating exchange '{exchangeConfig.ExchangeName}'...");
 
                 _model.ExchangeDeclare(exchangeConfig.ExchangeName, exchangeConfig.ExchangeType.ToLower(), exchangeConfig.Durable, exchangeConfig.AutoDelete, exchangeConfig.Arguments);
-
                 Console.WriteLine(" Done!");
                 return this;
 
@@ -62,6 +61,25 @@ namespace RabbitInstaller.Infrastructure
                 throw;
             }
         }
+        public ModelBuilder DeleteExchange(ExchangeConfiguration exchangeConfig)
+        {
+            try
+            {
+                _exchangeMap.Remove(exchangeConfig.ExchangeName);
+
+                Console.Write($"Deleting exchange '{exchangeConfig.ExchangeName}'...");
+
+                _model.ExchangeDelete(exchangeConfig.ExchangeName);
+                Console.WriteLine(" Done!");
+                return this;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                throw;
+            }
+        }
+
         public ModelBuilder CreateQueue(QueueConfiguration queueConfig)
         {
             try
@@ -122,17 +140,54 @@ namespace RabbitInstaller.Infrastructure
             }
         }
 
+        public ModelBuilder UnbindExchange(string exchangeName, ExchangeBindingConfiguration[] bindings)
+        {
+            try
+            {
+                foreach (var binding in bindings)
+                {
+                    if (binding.ExchangeName == null)
+                        continue;
+
+                    if (binding.RoutingKeys != null)
+                    {
+                        foreach (var routingKey in binding.RoutingKeys)
+                        {
+                            Console.Write(
+                                $"Removing binding from exchange '{exchangeName}' to exchange '{binding.ExchangeName}' with routingKey '{routingKey}' ...");
+                            _model.ExchangeUnbind(binding.ExchangeName, exchangeName, routingKey, binding.Arguments);
+                            Console.WriteLine(" Done!");
+
+                        }
+                    }
+                    else if (binding.Arguments != null)
+                    {
+                        Console.Write(
+                            $"Remove binding from exchange '{exchangeName}' to exchange '{binding.ExchangeName}' with arguments: ");
+                        foreach (var argument in binding.Arguments)
+                        {
+                            Console.Write($"'{argument.Key} : {argument.Value}'; ");
+                            _model.ExchangeUnbind(binding.ExchangeName, exchangeName, "", binding.Arguments);
+                        }
+                        Console.WriteLine("Done!");
+                    }
+                }
+                return this;
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                throw;
+            }
+        }
+
         public void Dispose()
         {
 
             foreach (var consumer in _simulationConsumers)
             {
                 consumer.Stop();
-            }
-
-            foreach (var publisher in _simulationPublishers)
-            {
-                publisher.Stop();
             }
 
             _model?.Close();
@@ -144,9 +199,9 @@ namespace RabbitInstaller.Infrastructure
         }
 
 
-        public void AddPublisher(ISimulationPublisher simulationPublisher)
+        public void AddPublisher(ISimulationEmitter simulationEmitter)
         {
-            _simulationPublishers.Add(simulationPublisher);
+            _simulationPublishers.Add(simulationEmitter);
         }
 
         public void StartSimulation()

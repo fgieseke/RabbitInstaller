@@ -1,50 +1,51 @@
 ﻿{
-  "environment": [
+  "environments": [
     {
       "exchangeName": "Translator",
-      "queueName": "{exchangeName}-{documentType}-{origin}-Queue",
+      "queueName": "Translator-{contentType}-{origin}-Queue",
       "variants": [
         {
           "name": "Text",
-          "consumer": [
+          "consumer": 
             {
               "binding": {
                 "routingKeys": [ "raw.text.xyz.create" ]
               }
             }
-          ],
-          "router": [
+          ,
+          "router": 
             {
               "binding": {
                 "routingKeys": [ "raw.text.abc.create", "raw.text.dpa.create" ]
               },
-              "modes": [
-                {
-                  "name": "create",
-                  "exchangeName": "Document",
-                  "routingKey": "doc.*.*.create"
-                },
-                {
-                  "name": "delete",
-                  "exchangeName": "Document",
-                  "RoutingKey": "doc.*.*.delete"
-                }
-              ]
+              "publish": {
+                "exchangeName": "Document",
+                "modes": [
+                  {
+                    "name": "create",
+                    "routingKey": "doc.*.*.create"
+                  },
+                  {
+                    "name": "delete",
+                    "RoutingKey": "doc.*.*.delete"
+                  }
+                ]
+              }
             }
-          ]
+          
         }
       ]
     },
     {
       "exchangeName": "Enricher",
-      "queueName": "{exchangeName}-{documentType}-{origin}-Queue",
+      "queueName": "Enricher-{contentType}-{origin}-Queue",
       "variants": [
         {
           "name": "KitKeyword",
           "routers": [
             {
               "binding": {
-                "routingKeys": [ "doc.*.*.indexed"],
+                "routingKeys": [ "doc.*.*.indexed" ],
                 "documentType": "video",
                 "origins": [ "KitKeyword" ]
               }
