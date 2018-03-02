@@ -4,14 +4,10 @@ using System.Configuration;
 using System.Linq;
 using Newtonsoft.Json;
 using RabbitInstaller.Infrastructure;
-using RawRabbit.Common;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.Policy;
 using System.Threading;
-using System.Threading.Tasks;
-using Fclp.Internals.Extensions;
 using RabbitMQ.Client;
+using RawRabbit.Configuration;
 
 namespace RabbitInstaller
 {
@@ -26,12 +22,15 @@ namespace RabbitInstaller
         static void Main(string[] args)
         {
             _subscribers = new List<SimulationConsumer>();
-            var serviceBusConfig = ConfigurationManager.ConnectionStrings["RabbitMqConnection"];
-            var configuration = ConnectionStringParser.Parse(serviceBusConfig.ConnectionString);
-            configuration.RouteWithGlobalId = false;
-            configuration.VirtualHost = "poc";
-
-            _modelConfig = LoadJson<ModelConfig>("setup3.json");
+            _modelConfig = LoadJson<ModelConfig>("setup.json");
+            var configuration = new RawRabbitConfiguration
+            {
+                Hostnames = _modelConfig.Hosts.ToList(),
+                Username = _modelConfig.User,
+                Password = _modelConfig.Password,
+                VirtualHost = _modelConfig.VHost,
+                RouteWithGlobalId = false
+            };
 
             using (var connection = BusClientFactory.CreateConnection(configuration))
             {
@@ -290,7 +289,7 @@ namespace RabbitInstaller
                                 var sim = new SimulationConsumer(channel, $"{queueBinding.RoutingKey}-Consumer", queueBinding.QueueName, new ConsumerPublishConfig
                                 {
                                     ExchangeName = variant.Router.Publish.ExchangeName,
-                                    RoutingKey =   mode.RoutingKey
+                                    RoutingKey = mode.RoutingKey
                                 });
                                 _subscribers.Add(sim);
                             }
@@ -342,7 +341,7 @@ namespace RabbitInstaller
                 simEmit.Start();
                 Thread.Sleep(2000);
             }
-            
+
         }
 
 

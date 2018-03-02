@@ -1,22 +1,24 @@
 ﻿{
-  "hosts": [ "localhost" ],
+  "hosts": [ "npk-mp-q-dev1" ],
   "user": "portal",
-  "vhost": "poc",
   "password": "p0rtal",
+  "vhost": "poc",
   "exchanges": [
     {
       "exchangeName": "Emitter",
       "exchangeType": "Topic",
-      "direction":  "out", 
+      "direction": "out",
       "durable": true,
       "autoDelete": false,
-      "arguments": {},
-      "bindings": [
-        {
-          "exchangeName": "Translator",
-          "routingKeys": [ "raw.#" ]
-        }
-      ]
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "Translator",
+            "routingKeys": [ "raw.#" ]
+          }
+        ]
+      }
+
     },
     {
       "exchangeName": "Translator",
@@ -24,59 +26,49 @@
       "direction": "in",
       "durable": true,
       "autoDelete": false,
-      "arguments": {},
-      "bindings": [
-        {
-          "queueName": "Translate_Text_Abc",
-          "routingKeys": [ "raw.text.abc.#" ],
-          "arguments": {}
-        },
-        {
-          "queueName": "Translate_Video_Newsroom",
-          "routingKeys": [ "raw.video.newsroom.#" ],
-          "arguments": {}
-        }
-      ]
+      "binding": {}
+    },
+    {
+      "exchangeName": "Storage",
+      "exchangeType": "Headers",
+      "direction": "in",
+      "durable": true,
+      "binding": {}
     },
     {
       "exchangeName": "Document",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
-      "autoDelete": false,
-      "arguments": {},
-      "bindings": [
-        {
-          "exchangeName": "EnricherCache",
-          "routingKeys": [ "doc.*.*.create" ]
-        },
-        {
-          "exchangeName": "Indexer",
-          "routingKeys": [ "doc.*.*.refresh" ]
-        },
-        {
-          "exchangeName": "Enricher",
-          "routingKeys": [ "doc.*.*.index" ]
-        }
-      ]
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "EnricherCache",
+            "routingKeys": [ "doc.*.*.create", "doc.*.*.delete" ]
+          },
+          {
+            "exchangeName": "Indexer",
+            "routingKeys": [ "doc.*.*.refresh" ]
+          },
+          {
+            "exchangeName": "Enricher",
+            "routingKeys": [ "doc.*.*.indexed" ]
+          },
+          {
+            "exchangeName": "Storage",
+            "arguments": {
+              "serial": true
+            }
+          }
+        ]
+      }
     },
     {
       "exchangeName": "Enricher",
       "exchangeType": "Topic",
       "direction": "in",
       "durable": true,
-      "autoDelete": false,
-      "arguments": {},
-      "bindings": [
-        {
-          "queueName": "Enricher_KitKeywords",
-          "routingKeys": [ "doc.video.*.index" ]
-        },
-        {
-          "queueName": "Enricher_AgencyProperties",
-          "routingKeys": [ "doc.video.*.index" ]
-        }
-      ]
+      "binding": {}
     },
     {
       "exchangeName": "Indexer",
@@ -84,17 +76,7 @@
       "direction": "in",
       "durable": true,
       "autoDelete": false,
-      "arguments": {},
-      "bindings": [
-        {
-          "queueName": "Index_Create",
-          "routingKeys": [ "doc.*.*.refresh" ]
-        },
-        {
-          "queueName": "Index_Update",
-          "routingKeys": [ "partial.#" ]
-        }
-      ]
+      "binding": {}
     },
     {
       "exchangeName": "PartialDocument",
@@ -102,17 +84,18 @@
       "direction": "out",
       "durable": true,
       "autoDelete": false,
-      "arguments": {},
-      "bindings": [
-        {
-          "exchangeName": "EnricherCache",
-          "routingKeys": [ "partial.#" ]
-        },
-        {
-          "exchangeName": "Indexer",
-          "routingKeys": [ "partial.#" ]
-        }
-      ]
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "EnricherCache",
+            "routingKeys": [ "partial.#" ]
+          },
+          {
+            "exchangeName": "Indexer",
+            "routingKeys": [ "partial.#" ]
+          }
+        ]
+      }
     },
     {
       "exchangeName": "EnricherCache",
@@ -120,191 +103,10 @@
       "direction": "in",
       "durable": true,
       "autoDelete": false,
-      "arguments": {},
-      "bindings": [
-        {
-          "queueName": "EnricherCache_Writer",
-          "routingKeys": [ "partial.#", "doc.*.*.delete" ]
-        },
-        {
-          "queueName": "EnricherCache_Updater",
-          "routingKeys": [ "doc.*.*.create" ]
-        }
-      ]
+      "binding": {}
     }
-
-
-  ],
-  "queues": [
-    {
-      "queueName": "Translate_Text_Abc",
-      "durable": true,
-      "autoDelete": false,
-      "arguments": {}
-    },
-    {
-      "queueName": "Translate_Video_Newsroom",
-      "durable": true,
-      "autoDelete": false,
-      "arguments": {}
-    },
-    {
-      "queueName": "Index_Update",
-      "durable": true,
-      "autoDelete": false,
-      "arguments": {}
-    },
-    {
-      "queueName": "Index_Create",
-      "durable": true,
-      "autoDelete": false,
-      "arguments": {}
-    },
-    {
-      "queueName": "Enricher_KitKeywords",
-      "durable": false,
-      "autoDelete": false,
-      "arguments": {}
-    },
-    {
-      "queueName": "Enricher_AgencyProperties",
-      "durable": false,
-      "autoDelete": false,
-      "arguments": {}
-    },
-    {
-      "queueName": "EnricherCache_Updater",
-      "durable": false,
-      "autoDelete": false,
-      "arguments": {}
-    },
-    {
-      "queueName": "EnricherCache_Writer",
-      "durable": false,
-      "autoDelete": false,
-      "arguments": {}
-    }
-  ],
-
-  "simulation": {
-    "enabled": true,
-    "scenarios": [
-      {
-        "name": "Default",
-        "consumers": [
-          {
-            "name": "Translator.Abc-Worker",
-            "instances": 2,
-            "queueNames": [ "Translate_Text_Abc" ],
-            "publish": {
-              "exchangeName": "Document",
-              "routingKey": "doc.text.abc.{action}"
-            }
-          },
-          {
-            "name": "TranslateVideoNewsroom-Worker",
-            "instances": 2,
-            "queueNames": [ "Translate_Video_Newsroom" ],
-            "publish": {
-              "exchangeName": "Document",
-              "routingKey": "doc.video.vpms.{action}"
-            }
-          },
-          {
-            "name": "EnricherCache-Worker",
-            "instances": 1,
-            "queueNames": [ "EnricherCache_Updater" ],
-            "publish": {
-              "exchangeName": "Document",
-              "routingKey": "doc.{documentType}.{origin}.refresh"
-            }
-          },
-          {
-            "name": "IndexerCreate-Worker",
-            "instances": 1,
-            "queueNames": [ "Index_Create" ],
-            "publish": {
-              "exchangeName": "Document",
-              "routingKey": "doc.{documentType}.{origin}.index"
-            }
-          },
-          {
-            "name": "IndexerUpdate-Worker",
-            "instances": 1,
-            "queueNames": [ "Index_Update" ]
-          },
-          {
-            "name": "EnricherKitKeywords-Worker",
-            "instances": 1,
-            "queueNames": [ "Enricher_KitKeywords" ],
-            "publish": {
-              "exchangeName": "PartialDocument",
-              "routingKey": "partial.{documentType}.{origin}.KitKeywords"
-            }
-          },
-          {
-            "name": "EnricherAgencyProperties-Worker",
-            "instances": 1,
-            "queueNames": [ "Enricher_AgencyProperties" ],
-            "publish": {
-              "exchangeName": "PartialDocument",
-              "routingKey": "partial.{documentType}.{origin}.AgencyProperties"
-            }
-          },
-          {
-            "name": "EnricherCache_Writer-Worker",
-            "instances": 1,
-            "queueNames": [ "EnricherCache_Writer" ]
-          },
-          {
-            "name": "EnricherCache_Updater-Worker",
-            "instances": 1,
-            "queueNames": [ "EnricherCache_Updater" ],
-            "publish": {
-              "exchangeName": "Document",
-              "routingKey": "doc.{documentType}.{origin}.refresh"
-            }
-          }
-        ],
-        "publishers": [
-          {
-            "name": "Emitter.Newsroom-Create",
-            "exchangeName": "Emitter",
-            "routingKey": "raw.video.newsroom.create",
-            "messageCount": 1,
-            "period": 1000
-          },
-          {
-            "name": "Emitter.Newsroom-Delete",
-            "exchangeName": "Emitter",
-            "routingKey": "raw.video.newsroom.delete",
-            "messageCount": 1,
-            "period": 1000
-          },
-          {
-            "name": "Emitter.Newsroom-Bulk",
-            "exchangeName": "Emitter",
-            "routingKey": "raw.video.newsroom.bulk",
-            "messageCount": 1,
-            "period": 1000
-          }
-        ]
-      },
-    {
-      "name": "Agency",
-      "consumers": [],
-      "publishers": [
-        {
-          "name": "Emitter.Abc-Create",
-          "exchangeName": "Emitter",
-          "routingKey": "raw.text.abc.create",
-          "messageCount": 1,
-          "period": 2000
-        }
-      ]
-  }
-    ]
-  }
-
-
+  ]
 }
+
+
+
