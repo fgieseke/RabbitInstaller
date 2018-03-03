@@ -15,7 +15,22 @@
           "exchangeName": "EnricherCache",
           "variant": "Refresh",
           "routingMode": "create"
+        },
+        {
+          "exchangeName": "Indexer",
+          "variant": "Index",
+          "routingMode": "index"
+        },
+        {
+          "exchangeName": "Indexer",
+          "variant": "Update"
+        },
+        {
+          "exchangeName": "Enricher",
+          "variant": "Text",
+          "routingMode": "enrich"
         }
+
       ],
       "emitter": {
         "exchangeName": "Emitter",

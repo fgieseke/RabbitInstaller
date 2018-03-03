@@ -41,7 +41,7 @@
           "queueNamePattern": "EnricherCache-Refresh-Queue",
           "router": {
             "binding": {
-              "routingKeys": [ "doc.*.*.create"]
+              "routingKeys": [ "doc.*.*.create" ]
             },
             "publish": {
               "exchangeName": "Document",
@@ -53,34 +53,63 @@
               ]
             }
           }
-
+        }
+      ]
+    },
+    {
+      "exchangeName": "Indexer",
+      "variants": [
+        {
+          "name": "Index",
+          "queueNamePattern": "Indexer-Create-Queue",
+          "router": {
+            "binding": {
+              "routingKeys": [ "doc.*.*.refresh" ]
+            },
+            "publish": {
+              "exchangeName": "Document",
+              "modes": [
+                {
+                  "name": "index",
+                  "routingKey": "doc.*.*.indexed"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update",
+          "queueNamePattern": "Indexer-Update-Queue",
+          "consumer": {
+            "binding": {
+              "routingKeys": [ "partial.*.*.enrich" ]
+            }
+          }
         }
       ]
     },
     {
       "exchangeName": "Enricher",
-      "queueName": "Enricher-{contentType}-{origin}-Queue",
       "variants": [
         {
-          "name": "KitKeyword",
-          "routers": [
-            {
-              "binding": {
-                "routingKeys": [ "doc.*.*.indexed" ],
-                "documentType": "video",
-                "origins": [ "KitKeyword" ]
-              }
-            }
-          ],
-          "modes": [
-            {
-              "name": "enrich",
+          "name": "Text",
+          "queueNamePattern": "Enricher-Text-TextEnricher-Queue",
+          "router": {
+            "binding": {
+              "routingKeys": [ "doc.text.*.indexed" ]
+            },
+            "publish": {
               "exchangeName": "PartialDocument",
-              "RoutingKey": "partial.*.*.enrich"
+              "modes": [
+                {
+                  "name": "enrich",
+                  "routingKey": "partial.*.*.enrich"
+                }
+              ]
             }
-          ]
+          }
         }
       ]
     }
   ]
-}
+} 
