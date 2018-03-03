@@ -7,31 +7,8 @@ namespace RabbitInstaller.Infrastructure
 
     public class ScenarioConfigFile
     {
-        //private Dictionary<string, VariantElement[]> _envMap;
-
-        //public ScenarioConfigFile()
-        //{
-        //    RouterModes = new Dictionary<string, IEnumerable<RouterMode>>();
-        //}
 
         public Scenario[] Scenarios { get; set; }
-
-        //public Dictionary<string, IEnumerable<RouterMode>> RouterModes { get; private set; }
-
-        //public RouterMode GetRouterConfig(string router, string mode)
-        //{
-        //    RouterModes.TryGetValue(router, out var routerModes);
-        //    return routerModes?.FirstOrDefault(r => r.Name == mode);
-        //}
-
-        //public void AddEnvironments(EnvironmentConfig[] envConfig)
-        //{
-        //    _envMap = envConfig.ToDictionary(e => e.ExchangeName, e => e.Variants);
-        //    foreach (var environmentConfig in envConfig.Where(e => e.Variants.Any(v => v.Router != null)))
-        //    {
-        //        RouterModes.Add(environmentConfig.ExchangeName, environmentConfig.Variants.Select(v => v.Router));
-        //    }
-        //}
     }
 
     public class Scenario
@@ -41,6 +18,7 @@ namespace RabbitInstaller.Infrastructure
         private Dictionary<string, string> _routerMapMode = new Dictionary<string, string>();
         private Dictionary<string, string> _envMapMode = new Dictionary<string, string>();
         public string Name { get; set; }
+        public string[] Steps { get; set; }
 
         public EnvironmentElement[] Environments { get; set; }
 

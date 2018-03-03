@@ -2,37 +2,58 @@
   "environments": [
     {
       "exchangeName": "Translator",
-      "queueName": "Translator-{contentType}-{origin}-Queue",
       "variants": [
         {
           "name": "Text",
-          "consumer": 
-            {
-              "binding": {
-                "routingKeys": [ "raw.text.xyz.create" ]
-              }
+          "queueNamePattern": "Translator-{contentType}-{origin}-Queue",
+          "consumer": {
+            "binding": {
+              "routingKeys": [ "raw.text.xyz.create" ]
             }
-          ,
-          "router": 
-            {
-              "binding": {
-                "routingKeys": [ "raw.text.abc.create", "raw.text.dpa.create" ]
-              },
-              "publish": {
-                "exchangeName": "Document",
-                "modes": [
-                  {
-                    "name": "create",
-                    "routingKey": "doc.*.*.create"
-                  },
-                  {
-                    "name": "delete",
-                    "RoutingKey": "doc.*.*.delete"
-                  }
-                ]
-              }
+          },
+          "router": {
+            "binding": {
+              "routingKeys": [ "raw.text.abc.create", "raw.text.dpa.create" ]
+            },
+            "publish": {
+              "exchangeName": "Document",
+              "modes": [
+                {
+                  "name": "create",
+                  "routingKey": "doc.*.*.create"
+                },
+                {
+                  "name": "delete",
+                  "RoutingKey": "doc.*.*.delete"
+                }
+              ]
             }
-          
+          }
+
+        }
+      ]
+    },
+    {
+      "exchangeName": "EnricherCache",
+      "variants": [
+        {
+          "name": "Refresh",
+          "queueNamePattern": "EnricherCache-Refresh-Queue",
+          "router": {
+            "binding": {
+              "routingKeys": [ "doc.*.*.create"]
+            },
+            "publish": {
+              "exchangeName": "Document",
+              "modes": [
+                {
+                  "name": "create",
+                  "routingKey": "doc.*.*.refresh"
+                }
+              ]
+            }
+          }
+
         }
       ]
     },

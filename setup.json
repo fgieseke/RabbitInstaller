@@ -1,5 +1,5 @@
 ﻿{
-  "hosts": [ "npk-mp-q-dev1" ],
+  "hosts": [ "localhost" ],
   "user": "portal",
   "password": "p0rtal",
   "vhost": "poc",

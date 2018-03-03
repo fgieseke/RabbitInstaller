@@ -8,7 +8,6 @@
     public class EnvironmentConfig
     {
         public string ExchangeName { get; set; }
-        public string QueueName { get; set; }
         public VariantElement[] Variants { get; set; }
 
     }
@@ -16,6 +15,7 @@
     public class VariantElement
     {
         public string Name { get; set; }
+        public string QueueNamePattern { get; set; }
         public ConsumerElement Consumer { get; set; }
         public RouterElement Router { get; set; }
     }

@@ -2,12 +2,21 @@
   "scenarios": [
     {
       "name": "agency-create",
+      "steps": [ "Creates raw text messages",
+        "Transforms it to doc", 
+        "EnricherCache refreshes doc" ],
       "environments": [
         {
           "exchangeName": "Translator",
           "variant": "Text",
           "routingMode": "create"
-        }],
+        },
+        {
+          "exchangeName": "EnricherCache",
+          "variant": "Refresh",
+          "routingMode": "create"
+        }
+      ],
       "emitter": {
         "exchangeName": "Emitter",
         "routingKeys": [ "raw.text.xyz.create", "raw.text.abc.create", "raw.text.dpa.create" ]

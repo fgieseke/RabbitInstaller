@@ -56,6 +56,7 @@ namespace RabbitInstaller
                                 Console.WriteLine("setup                : Setup infrastructure");
                                 Console.WriteLine("sc or scenarios      : List of scenarios");
                                 Console.WriteLine("cleanup              : Cleanup infrastructure: Removes all defined exchanges!");
+                                Console.WriteLine("delete <queuename>   : Deletes a queue");
                                 Console.WriteLine("x or exit            : exits CLI");
                                 Console.WriteLine("cls                  : console clear");
                                 break;
@@ -82,6 +83,16 @@ namespace RabbitInstaller
                                     RunScenario(connection, actions[1]);
                                 }
                                 break;
+                            case "delete":
+                                if (actions.Length < 2)
+                                {
+                                    Console.WriteLine("\nDelete requires a second argument 'queuename'!");
+                                }
+                                else
+                                {
+                                    DeleteQueue(connection, actions[1]);
+                                }
+                                break;
                             case "x":
                             case "exit":
                                 isRunning = false;
@@ -106,6 +117,24 @@ namespace RabbitInstaller
 
         }
 
+        private static void DeleteQueue(IConnection connection, string queuename)
+        {
+            using (var channel = new ModelBuilder(connection).Model)
+            {
+                try
+                {
+                    var queueExists = channel.QueueDeclarePassive(queuename);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Unknown queue '{queuename}'");
+                    return;
+                }
+                Console.WriteLine($"Queue '{queuename}' deleted.");
+
+            }
+        }
+
         private static void ListScenarios()
         {
             var scenarioConfigFile = LoadJson<ScenarioConfigFile>("scenarios.json");
@@ -117,12 +146,18 @@ namespace RabbitInstaller
 
             foreach (var scenario in scenarioConfigFile.Scenarios)
             {
-                Console.WriteLine($"- {scenario.Name}");
+                Console.WriteLine($"# {scenario.Name}");
+                Console.WriteLine($"  Steps");
+                foreach (var step in scenario.Steps)
+                {
+                    Console.WriteLine($"    - {step}");
+                }
                 if (scenario.Environments == null)
                     continue;
+                Console.WriteLine($"  Uses environments:");
                 foreach (var env in scenario.Environments)
                 {
-                    Console.WriteLine($"    - {env}");
+                    Console.WriteLine($"    - {env.ExchangeName}: {env.Variant}");
                 }
             }
         }
@@ -270,7 +305,7 @@ namespace RabbitInstaller
                     {
                         foreach (var routingKey in variant.Consumer.Binding.RoutingKeys)
                         {
-                            var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, envFound.QueueName, routingKey);
+                            var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, variant.QueueNamePattern, routingKey);
                             var sim = new SimulationConsumer(channel, $"{queueBinding.RoutingKey}-Consumer", queueBinding.QueueName);
                             _subscribers.Add(sim);
                         }
@@ -279,7 +314,7 @@ namespace RabbitInstaller
                     {
                         foreach (var routingKey in variant.Router.Binding.RoutingKeys)
                         {
-                            var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, envFound.QueueName, routingKey);
+                            var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, variant.QueueNamePattern, routingKey);
                             if (variant.Router.Publish != null)
                             {
                                 var mode = variant.Router.Publish.Modes.FirstOrDefault(m => m.Name == env.RoutingMode);
