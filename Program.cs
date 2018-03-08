@@ -18,11 +18,13 @@ namespace RabbitInstaller
         private static ScenarioConfigFile _lastScenarioConfigFile;
         private static ModelConfig _modelConfig;
         private static List<SimulationConsumer> _subscribers;
+        private static string _queueFile = "queues.txt";
 
         static void Main(string[] args)
         {
             _subscribers = new List<SimulationConsumer>();
             _modelConfig = LoadJson<ModelConfig>("setup.json");
+
             var configuration = new RawRabbitConfiguration
             {
                 Hostnames = _modelConfig.Hosts.ToList(),
@@ -31,8 +33,13 @@ namespace RabbitInstaller
                 VirtualHost = _modelConfig.VHost,
                 RouteWithGlobalId = false
             };
+            if (_modelConfig.Port > 0)
+            {
+                configuration.Port = _modelConfig.Port;
+                
+            }
 
-            using (var connection = BusClientFactory.CreateConnection(configuration))
+                using (var connection = BusClientFactory.CreateConnection(configuration))
             {
 
                 try
@@ -52,13 +59,14 @@ namespace RabbitInstaller
                         {
                             case "?":
                             case "help":
-                                Console.WriteLine("run <scenario-name>  : runs a scenario");
-                                Console.WriteLine("setup                : Setup infrastructure");
-                                Console.WriteLine("sc or scenarios      : List of scenarios");
-                                Console.WriteLine("cleanup              : Cleanup infrastructure: Removes all defined exchanges!");
-                                Console.WriteLine("delete <queuename>   : Deletes a queue");
-                                Console.WriteLine("x or exit            : exits CLI");
-                                Console.WriteLine("cls                  : console clear");
+                                Console.WriteLine("run <scenario-name>             : runs a scenario");
+                                Console.WriteLine("setup                           : Setup infrastructure");
+                                Console.WriteLine("sc or scenarios                 : List of scenarios");
+                                Console.WriteLine("cleanup                         : Cleanup infrastructure: Removes all defined exchanges!");
+                                Console.WriteLine("d or delete <queuename>         : Deletes a queue");
+                                Console.WriteLine("dq or deletequeues              : Deletes all queue uses in last scenario");
+                                Console.WriteLine("x or exit                       : exits CLI");
+                                Console.WriteLine("cls                             : console clear");
                                 break;
                             case "cls":
                                 Console.Clear();
@@ -84,6 +92,7 @@ namespace RabbitInstaller
                                 }
                                 break;
                             case "delete":
+                            case "d":
                                 if (actions.Length < 2)
                                 {
                                     Console.WriteLine("\nDelete requires a second argument 'queuename'!");
@@ -92,6 +101,10 @@ namespace RabbitInstaller
                                 {
                                     DeleteQueue(connection, actions[1]);
                                 }
+                                break;
+                            case "dq":
+                            case "deletequeues":
+                                DeleteQueues(connection);
                                 break;
                             case "x":
                             case "exit":
@@ -117,13 +130,26 @@ namespace RabbitInstaller
 
         }
 
+        private static void DeleteQueues(IConnection connection)
+        {
+            var queuesStr = File.ReadAllText(_queueFile);
+            var queues = queuesStr.Split(',');
+
+            foreach (var queue in queues)
+            {
+                DeleteQueue(connection, queue);
+            }
+        }
+
         private static void DeleteQueue(IConnection connection, string queuename)
         {
             using (var channel = new ModelBuilder(connection).Model)
             {
                 try
                 {
-                    var queueExists = channel.QueueDeclarePassive(queuename);
+                    channel.QueueDeclarePassive(queuename);
+                    channel.QueueDelete(queuename);
+
                 }
                 catch (Exception ex)
                 {
@@ -289,6 +315,7 @@ namespace RabbitInstaller
 
         private static void SetupEnvironment(IModel channel, EnvironmentConfig[] envConfigs, EnvironmentElement[] environments)
         {
+            var queuesCreated = new List<string>();
             Console.WriteLine("Setting up environments... ");
             foreach (var env in environments)
             {
@@ -306,6 +333,7 @@ namespace RabbitInstaller
                         foreach (var routingKey in variant.Consumer.Binding.RoutingKeys)
                         {
                             var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, variant.QueueNamePattern, routingKey);
+                            queuesCreated.Add(queueBinding.QueueName);
                             var sim = new SimulationConsumer(channel, $"{queueBinding.RoutingKey}-Consumer", queueBinding.QueueName);
                             _subscribers.Add(sim);
                         }
@@ -315,6 +343,8 @@ namespace RabbitInstaller
                         foreach (var routingKey in variant.Router.Binding.RoutingKeys)
                         {
                             var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, variant.QueueNamePattern, routingKey);
+                            queuesCreated.Add(queueBinding.QueueName);
+
                             if (variant.Router.Publish != null)
                             {
                                 var mode = variant.Router.Publish.Modes.FirstOrDefault(m => m.Name == env.RoutingMode);
@@ -331,6 +361,14 @@ namespace RabbitInstaller
                         }
                     }
                 }
+            }
+            try
+            {
+                File.WriteAllText(_queueFile, string.Join(",", queuesCreated));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
             }
         }
 

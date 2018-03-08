@@ -11,6 +11,7 @@ namespace RabbitInstaller.Infrastructure
         public string Password { get; set; }
         public string VHost { get; set; }
         public ExchangeModelConfig[] Exchanges { get; set; }
+        public int Port { get; set; }
     }
 
     public class ExchangeModelConfig : ExchangeConfiguration

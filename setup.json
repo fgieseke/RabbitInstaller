@@ -1,8 +1,8 @@
 ﻿{
   "hosts": [ "localhost" ],
-  "user": "portal",
-  "password": "p0rtal",
-  "vhost": "poc",
+  "user": "guest",
+  "password": "guest",
+  "vhost": "/",
   "exchanges": [
     {
       "exchangeName": "Emitter",
