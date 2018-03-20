@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using Newtonsoft.Json;
 using RabbitInstaller.Infrastructure;
-using System.IO;
-using System.Threading;
 using RabbitMQ.Client;
 using RawRabbit.Configuration;
 
@@ -72,6 +72,7 @@ namespace RabbitInstaller
                                 Console.Clear();
                                 break;
                             case "setup":
+                                _modelConfig = LoadJson<ModelConfig>("setup.json");
                                 SetupModel(connection, _modelConfig);
                                 break;
                             case "sc":
@@ -163,16 +164,26 @@ namespace RabbitInstaller
 
         private static void ListScenarios()
         {
-            var scenarioConfigFile = LoadJson<ScenarioConfigFile>("scenarios.json");
-            if (scenarioConfigFile == null)
+            string[] scenarioConfigFiles = {};
+            try
             {
-                Console.WriteLine("Missing file 'scenarios.json'.");
-                return;
+                scenarioConfigFiles = Directory.GetFiles("Scenarios", "*.json");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Scenarios have to be located in folder 'Scenarios'. Folder 'Scenarios' is missing.");
+                Console.WriteLine(ex.Message);
+            }
+            if (scenarioConfigFiles.Length == 0)
+            {
+                Console.WriteLine("No scenario-files found. Add a file with extention '.json'.");
             }
 
-            foreach (var scenario in scenarioConfigFile.Scenarios)
+            foreach (var scenarioFile in scenarioConfigFiles)
             {
-                Console.WriteLine($"# {scenario.Name}");
+                var scenario = LoadJson<ScenarioConfigFile>(scenarioFile);
+
+                Console.WriteLine($"# {scenarioFile.Replace(".json", "").Replace("Scenarios\\", "")}");
                 Console.WriteLine($"  Steps");
                 foreach (var step in scenario.Steps)
                 {
@@ -262,15 +273,14 @@ namespace RabbitInstaller
         private static void RunScenario(IConnection connection, string scenarioName)
         {
             var envConfigFile = LoadJson<EnvironmentConfigFile>("environment.json");
-            var scenarioConfigFile = LoadJson<ScenarioConfigFile>("scenarios.json");
-            if (_lastScenario != null && _lastScenario != scenarioName && !CleanUpScenario(envConfigFile.Environments, scenarioConfigFile, _lastScenario))
+            var scenario = LoadJson<ScenarioConfigFile>(Path.Combine("Scenarios", scenarioName + ".json"));
+            if (_lastScenario != null && _lastScenario != scenarioName && !CleanUpScenario(envConfigFile.Environments, scenario, _lastScenario))
                 return;
 
             _lastScenario = scenarioName;
-            _lastScenarioConfigFile = scenarioConfigFile;
+            _lastScenarioConfigFile = scenario;
             _lastEnvConfigFile = envConfigFile;
 
-            var scenario = scenarioConfigFile.Scenarios.FirstOrDefault(s => s.Name.ToLower() == scenarioName.ToLower());
             if (scenario == null)
             {
                 Console.WriteLine($"Unknown scenario '{scenarioName}'!");
@@ -334,7 +344,7 @@ namespace RabbitInstaller
                         {
                             var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, variant.QueueNamePattern, routingKey);
                             queuesCreated.Add(queueBinding.QueueName);
-                            var sim = new SimulationConsumer(channel, $"{queueBinding.RoutingKey}-Consumer", queueBinding.QueueName);
+                            var sim = new SimulationConsumer(channel, $"{envFound.ExchangeName}", queueBinding.QueueName);
                             _subscribers.Add(sim);
                         }
                     }
@@ -351,7 +361,7 @@ namespace RabbitInstaller
                                 if (mode == null)
                                     throw new ConfigurationErrorsException($"Could not find routing mode '{env.RoutingMode}' in environmentConfig.");
 
-                                var sim = new SimulationConsumer(channel, $"{queueBinding.RoutingKey}-Consumer", queueBinding.QueueName, new ConsumerPublishConfig
+                                var sim = new SimulationConsumer(channel, $"{envFound.ExchangeName}", queueBinding.QueueName, new ConsumerPublishConfig
                                 {
                                     ExchangeName = variant.Router.Publish.ExchangeName,
                                     RoutingKey = mode.RoutingKey

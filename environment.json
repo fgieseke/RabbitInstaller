@@ -1,7 +1,7 @@
 ﻿{
   "environments": [
     {
-      "exchangeName": "Translator",
+      "exchangeName": "Translator-In",
       "variants": [
         {
           "name": "Text",
@@ -13,10 +13,10 @@
           },
           "router": {
             "binding": {
-              "routingKeys": [ "raw.text.abc.create", "raw.text.dpa.create" ]
+              "routingKeys": [ "raw.text.abc.create" ]
             },
             "publish": {
-              "exchangeName": "Document",
+              "exchangeName": "Translator-Out",
               "modes": [
                 {
                   "name": "create",
@@ -30,21 +30,41 @@
             }
           }
 
+        },
+        {
+          "name": "Serial",
+          "queueNamePattern": "Translator-{contentType}-{origin}-Queue",
+          "router": {
+            "binding": {
+              "routingKeys": [ "raw.text.dpa.create" ]
+            },
+            "publish": {
+              "exchangeName": "Translator-Out",
+              "modes": [
+                {
+                  "name": "serial",
+                  "routingKey": "doc.*.*.serial"
+                }
+              ]
+            }
+          }
+
         }
+
       ]
     },
     {
-      "exchangeName": "EnricherCache",
+      "exchangeName": "EnricherCache-In",
       "variants": [
         {
           "name": "Refresh",
           "queueNamePattern": "EnricherCache-Refresh-Queue",
           "router": {
             "binding": {
-              "routingKeys": [ "doc.*.*.create" ]
+              "routingKeys": [ "doc.*.*.create", "doc.*.*.serial" ]
             },
             "publish": {
-              "exchangeName": "Document",
+              "exchangeName": "EnricherCache-Out",
               "modes": [
                 {
                   "name": "create",
@@ -53,11 +73,20 @@
               ]
             }
           }
+        },
+        {
+          "name": "Delete",
+          "queueNamePattern": "EnricherCache-Delete-Queue",
+          "consumer": {
+            "binding": {
+              "routingKeys": [ "doc.*.*.delete" ]
+            }
+          }
         }
       ]
     },
     {
-      "exchangeName": "Indexer",
+      "exchangeName": "Indexer-In",
       "variants": [
         {
           "name": "Index",
@@ -67,7 +96,7 @@
               "routingKeys": [ "doc.*.*.refresh" ]
             },
             "publish": {
-              "exchangeName": "Document",
+              "exchangeName": "Indexer-Out",
               "modes": [
                 {
                   "name": "index",
@@ -85,11 +114,20 @@
               "routingKeys": [ "partial.*.*.enrich" ]
             }
           }
+        },
+        {
+          "name": "Delete",
+          "queueNamePattern": "Indexer-Delete-Queue",
+          "consumer": {
+            "binding": {
+              "routingKeys": [ "doc.*.*.delete" ]
+            }
+          }
         }
       ]
     },
     {
-      "exchangeName": "Enricher",
+      "exchangeName": "Enricher-In",
       "variants": [
         {
           "name": "Text",
@@ -99,13 +137,27 @@
               "routingKeys": [ "doc.text.*.indexed" ]
             },
             "publish": {
-              "exchangeName": "PartialDocument",
+              "exchangeName": "Enricher-Out",
               "modes": [
                 {
                   "name": "enrich",
                   "routingKey": "partial.*.*.enrich"
                 }
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "exchangeName": "AgencyStore-In",
+      "variants": [
+        {
+          "name": "Store",
+          "queueNamePattern": "AgencyStore-Queue",
+          "consumer": {
+            "binding": {
+              "routingKeys": [ "doc.*.*.serial", "doc.*.*.delete" ]
             }
           }
         }

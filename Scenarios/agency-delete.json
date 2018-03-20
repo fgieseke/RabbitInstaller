@@ -1,0 +1,48 @@
+﻿{
+  "steps": [
+    "Creates raw text messages",
+    "Transforms it to doc",
+    "Sends it as a delete message"
+  ],
+  "environments": [
+    {
+      "exchangeName": "Translator-In",
+      "variant": "Text",
+      "routingMode": "delete"
+    },
+    {
+      "exchangeName": "EnricherCache-In",
+      "variant": "Delete"
+    },
+    {
+      "exchangeName": "AgencyStore-In",
+      "variant": "Store"
+    },
+    {
+      "exchangeName": "Indexer-In",
+      "variant": "Index",
+      "routingMode": "index"
+    },
+    {
+      "exchangeName": "Indexer-In",
+      "variant": "Delete"
+    },
+    {
+      "exchangeName": "Indexer-In",
+      "variant": "Update"
+    },
+    {
+      "exchangeName": "Enricher-In",
+      "variant": "Text",
+      "routingMode": "enrich"
+    }
+
+  ],
+  "emitter": {
+    "exchangeName": "Emitter-Out",
+    "routingKeys": [ "raw.text.xyz.create", "raw.text.abc.create", "raw.text.dpa.create" ]
+  }
+}
+
+
+

@@ -5,7 +5,7 @@
   "vhost": "/",
   "exchanges": [
     {
-      "exchangeName": "Emitter",
+      "exchangeName": "Emitter-Out",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
@@ -13,7 +13,7 @@
       "binding": {
         "exchanges": [
           {
-            "exchangeName": "Translator",
+            "exchangeName": "Translator-In",
             "routingKeys": [ "raw.#" ]
           }
         ]
@@ -21,7 +21,7 @@
 
     },
     {
-      "exchangeName": "Translator",
+      "exchangeName": "Translator-In",
       "exchangeType": "Topic",
       "direction": "in",
       "durable": true,
@@ -29,49 +29,99 @@
       "binding": {}
     },
     {
-      "exchangeName": "Storage",
-      "exchangeType": "Headers",
+      "exchangeName": "Translator-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "Indexer-In",
+            "routingKeys": [ "doc.*.*.delete" ]
+          },
+          {
+            "exchangeName": "EnricherCache-In",
+            "routingKeys": [ "doc.*.*.delete", "doc.*.*.create", "doc.*.*.serial" ]
+          },
+          {
+            "exchangeName": "AgencyStore-In",
+            "routingKeys": [ "doc.text.*.serial", "doc.text.*.delete" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "AgencyStore-In",
+      "exchangeType": "Topic",
       "direction": "in",
       "durable": true,
       "binding": {}
     },
     {
-      "exchangeName": "Document",
+      "exchangeName": "AgencyStore-Out",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
       "binding": {
         "exchanges": [
           {
-            "exchangeName": "EnricherCache",
-            "routingKeys": [ "doc.*.*.create", "doc.*.*.delete" ]
+            "exchangeName": "Indexer-In",
+            "routingKeys": [ "doc.*.*.bulk" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "Enricher-In",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "binding": {}
+    },
+    {
+      "exchangeName": "Enricher-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "Indexer-In",
+            "routingKeys": [ "partial.*.*.enrich" ]
           },
           {
-            "exchangeName": "Indexer",
-            "routingKeys": [ "doc.*.*.refresh" ]
-          },
+            "exchangeName": "EnricherCache-In",
+            "routingKeys": [ "partial.*.*.enrich" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "Indexer-In",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {}
+    },
+    {
+      "exchangeName": "Indexer-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
           {
-            "exchangeName": "Enricher",
+            "exchangeName": "Enricher-In",
             "routingKeys": [ "doc.*.*.indexed" ]
-          },
-          {
-            "exchangeName": "Storage",
-            "arguments": {
-              "serial": true
-            }
           }
         ]
       }
     },
     {
-      "exchangeName": "Enricher",
-      "exchangeType": "Topic",
-      "direction": "in",
-      "durable": true,
-      "binding": {}
-    },
-    {
-      "exchangeName": "Indexer",
+      "exchangeName": "EnricherCache-In",
       "exchangeType": "Topic",
       "direction": "in",
       "durable": true,
@@ -79,7 +129,7 @@
       "binding": {}
     },
     {
-      "exchangeName": "PartialDocument",
+      "exchangeName": "EnricherCache-Out",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
@@ -87,26 +137,11 @@
       "binding": {
         "exchanges": [
           {
-            "exchangeName": "EnricherCache",
-            "routingKeys": [ "partial.#" ]
-          },
-          {
-            "exchangeName": "Indexer",
-            "routingKeys": [ "partial.#" ]
+            "exchangeName": "Indexer-In",
+            "routingKeys": [ "doc.*.*.refresh" ]
           }
         ]
       }
-    },
-    {
-      "exchangeName": "EnricherCache",
-      "exchangeType": "Topic",
-      "direction": "in",
-      "durable": true,
-      "autoDelete": false,
-      "binding": {}
     }
   ]
 }
-
-
-

@@ -1,43 +1,49 @@
 ﻿{
-  "scenarios": [
+  "steps": [
+    "Creates raw text messages",
+    "Transforms it to doc",
+    "EnricherCache refreshes doc"
+  ],
+  "environments": [
     {
-      "name": "agency-create",
-      "steps": [ "Creates raw text messages",
-        "Transforms it to doc", 
-        "EnricherCache refreshes doc" ],
-      "environments": [
-        {
-          "exchangeName": "Translator",
-          "variant": "Text",
-          "routingMode": "create"
-        },
-        {
-          "exchangeName": "EnricherCache",
-          "variant": "Refresh",
-          "routingMode": "create"
-        },
-        {
-          "exchangeName": "Indexer",
-          "variant": "Index",
-          "routingMode": "index"
-        },
-        {
-          "exchangeName": "Indexer",
-          "variant": "Update"
-        },
-        {
-          "exchangeName": "Enricher",
-          "variant": "Text",
-          "routingMode": "enrich"
-        }
-
-      ],
-      "emitter": {
-        "exchangeName": "Emitter",
-        "routingKeys": [ "raw.text.xyz.create", "raw.text.abc.create", "raw.text.dpa.create" ]
-      }
+      "exchangeName": "Translator-In",
+      "variant": "Text",
+      "routingMode": "create"
+    },
+    {
+      "exchangeName": "Translator-In",
+      "variant": "Serial",
+      "routingMode": "serial"
+    },
+    {
+      "exchangeName": "EnricherCache-In",
+      "variant": "Refresh",
+      "routingMode": "create"
+    },
+    {
+      "exchangeName": "AgencyStore-In",
+      "variant": "Store"
+    },
+    {
+      "exchangeName": "Indexer-In",
+      "variant": "Index",
+      "routingMode": "index"
+    },
+    {
+      "exchangeName": "Indexer-In",
+      "variant": "Update"
+    },
+    {
+      "exchangeName": "Enricher-In",
+      "variant": "Text",
+      "routingMode": "enrich"
     }
-  ]
+
+  ],
+  "emitter": {
+    "exchangeName": "Emitter-Out",
+    "routingKeys": [ "raw.text.xyz.create", "raw.text.abc.create", "raw.text.dpa.create" ]
+  }
 }
 
 

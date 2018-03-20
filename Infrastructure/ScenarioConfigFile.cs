@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 
 namespace RabbitInstaller.Infrastructure
 {
@@ -8,11 +7,7 @@ namespace RabbitInstaller.Infrastructure
     public class ScenarioConfigFile
     {
 
-        public Scenario[] Scenarios { get; set; }
-    }
 
-    public class Scenario
-    {
         private string[] _router;
         private string[] _environments;
         private Dictionary<string, string> _routerMapMode = new Dictionary<string, string>();
