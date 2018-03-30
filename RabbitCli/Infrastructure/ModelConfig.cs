@@ -12,6 +12,7 @@ namespace RabbitCli.Infrastructure
         public string VHost { get; set; }
         public ExchangeModelConfig[] Exchanges { get; set; }
         public int Port { get; set; }
+        public string ExecutableBasePath { get; set; }
     }
 
     public class ExchangeModelConfig : ExchangeConfiguration

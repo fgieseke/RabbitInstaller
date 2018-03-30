@@ -8,8 +8,6 @@ namespace RabbitCli.Infrastructure
     {
 
 
-        private string[] _router;
-        private string[] _environments;
         private Dictionary<string, string> _routerMapMode = new Dictionary<string, string>();
         private Dictionary<string, string> _envMapMode = new Dictionary<string, string>();
         public string Name { get; set; }

@@ -9,12 +9,14 @@
           "consumer": {
             "binding": {
               "routingKeys": [ "raw.text.xyz.create" ]
-            }
+            },
+            "executable": "SampleService\\bin\\Debug\\SampleService.exe"
           },
           "router": {
             "binding": {
               "routingKeys": [ "raw.text.abc.create" ]
             },
+            "executable": "simulation",
             "publish": {
               "exchangeName": "Translator-Out",
               "modes": [

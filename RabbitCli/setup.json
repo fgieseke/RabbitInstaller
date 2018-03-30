@@ -3,6 +3,7 @@
   "user": "guest",
   "password": "guest",
   "vhost": "/",
+  "executableBasePath": "C:\\Dev\\VS2017\\RabbitInstaller\\",
   "exchanges": [
     {
       "exchangeName": "Emitter-Out",

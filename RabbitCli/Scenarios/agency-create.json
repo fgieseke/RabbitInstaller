@@ -44,6 +44,7 @@
     "exchangeName": "Emitter-Out",
     "routingKeys": [ "raw.text.xyz.create", "raw.text.abc.create", "raw.text.dpa.create" ]
   }
+
 }
 
 

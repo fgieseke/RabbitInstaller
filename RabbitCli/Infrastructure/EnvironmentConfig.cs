@@ -34,6 +34,7 @@
     public class ConsumerElement 
     {
         public BindingElement Binding { get; set; }
+        public string Executable { get; set; }
     }
 
     public class BindingElement

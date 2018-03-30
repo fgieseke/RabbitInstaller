@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using log4net;
-using log4net.Config;
 using Newtonsoft.Json;
 using RabbitCli.Infrastructure;
 using RabbitMQ.Client;
@@ -22,14 +21,11 @@ namespace RabbitCli
         private static List<SimulationConsumer> _subscribers;
         private static string _queueFile = "queues.txt";
 
-        public static ILog Logger { get; private set; }
-
         static void Main(string[] args)
         {
             _subscribers = new List<SimulationConsumer>();
             _modelConfig = LoadJson<ModelConfig>("setup.json");
-            Logger = LogManager.GetLogger("root");
-            XmlConfigurator.Configure();
+
             var configuration = new RawRabbitConfiguration
             {
                 Hostnames = _modelConfig.Hosts.ToList(),
@@ -278,7 +274,17 @@ namespace RabbitCli
         private static void RunScenario(IConnection connection, string scenarioName)
         {
             var envConfigFile = LoadJson<EnvironmentConfigFile>("environment.json");
-            var scenario = LoadJson<ScenarioConfigFile>(Path.Combine("Scenarios", scenarioName + ".json"));
+            ScenarioConfigFile scenario = null;
+            try
+            {
+                scenario = LoadJson<ScenarioConfigFile>(Path.Combine("Scenarios", scenarioName + ".json"));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return;
+            }
+            
             if (_lastScenario != null && _lastScenario != scenarioName && !CleanUpScenario(envConfigFile.Environments, scenario, _lastScenario))
                 return;
 
@@ -349,8 +355,36 @@ namespace RabbitCli
                         {
                             var queueBinding = DeclareAndBindQueues(channel, envFound.ExchangeName, variant.QueueNamePattern, routingKey);
                             queuesCreated.Add(queueBinding.QueueName);
-                            var sim = new SimulationConsumer(channel, $"{envFound.ExchangeName}", queueBinding.QueueName);
-                            _subscribers.Add(sim);
+                            if (variant.Consumer.Executable == null ||
+                                variant.Consumer.Executable.ToLower() == "simulation")
+                            {
+                                var sim = new SimulationConsumer(channel, $"{envFound.ExchangeName}", queueBinding.QueueName);
+                                _subscribers.Add(sim);
+                            }
+                            else if (variant.Consumer.Executable != null &&
+                                variant.Consumer.Executable.ToLower().Contains(".exe"))
+                            {
+                                var basePath = _modelConfig.ExecutableBasePath ?? "";
+                                var executable = Path.Combine(basePath, variant.Consumer.Executable);
+                                if (!File.Exists(executable))
+                                {
+                                    Console.WriteLine($"Path to '{executable}' not valid. Check environment.variant.executable and setup.ExecutableBasePath.");
+                                    continue;
+                                }
+                                var startInfo = new ProcessStartInfo
+                                {
+                                    FileName = executable
+                                };
+                                try
+                                {
+                                    Process.Start(startInfo);
+                                }
+                                catch (Exception e)
+                                {
+                                    Console.WriteLine(e.Message);
+                                    continue;
+                                }
+                            }
                         }
                     }
                     if (variant.Router != null)
