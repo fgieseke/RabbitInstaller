@@ -2,7 +2,7 @@
 using RawRabbit.Configuration.Exchange;
 using RawRabbit.Configuration.Queue;
 
-namespace RabbitInstaller.Infrastructure
+namespace RabbitCli.Infrastructure
 {
     public class ModelConfig
     {

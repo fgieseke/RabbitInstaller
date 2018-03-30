@@ -1,6 +1,6 @@
 ﻿using RabbitMQ.Client.Events;
 
-namespace RabbitInstaller.Infrastructure
+namespace RabbitCli.Infrastructure
 {
     public interface ISimulationConsumer
     {

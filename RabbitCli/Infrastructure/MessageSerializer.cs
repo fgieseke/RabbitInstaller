@@ -7,7 +7,7 @@ using RabbitMQ.Client.Events;
 using RawRabbit.Common;
 using RawRabbit.Serialization;
 
-namespace RabbitInstaller.Infrastructure
+namespace RabbitCli.Infrastructure
 {
     #region Using
 

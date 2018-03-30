@@ -9,7 +9,7 @@ using RawRabbit.Configuration.Queue;
 
 #endregion
 
-namespace RabbitInstaller.Infrastructure
+namespace RabbitCli.Infrastructure
 {
 
     /// <summary>

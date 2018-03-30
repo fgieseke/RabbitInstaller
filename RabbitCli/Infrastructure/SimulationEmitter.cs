@@ -3,7 +3,7 @@ using System.Text;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 
-namespace RabbitInstaller.Infrastructure
+namespace RabbitCli.Infrastructure
 {
     public class SimulationEmitter : ISimulationEmitter
     {

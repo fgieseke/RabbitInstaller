@@ -1,8 +1,6 @@
 #region Using
 
-using System;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RawRabbit;
@@ -19,7 +17,7 @@ using RawRabbit.Operations.Abstraction;
 
 #endregion
 
-namespace RabbitInstaller.Infrastructure
+namespace RabbitCli.Infrastructure
 {
 
     /// <summary>

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace RabbitInstaller.Infrastructure
+namespace RabbitCli.Infrastructure
 {
     public class QueueBindingInfo
     {

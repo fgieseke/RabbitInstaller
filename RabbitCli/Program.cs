@@ -4,12 +4,14 @@ using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using log4net;
+using log4net.Config;
 using Newtonsoft.Json;
-using RabbitInstaller.Infrastructure;
+using RabbitCli.Infrastructure;
 using RabbitMQ.Client;
 using RawRabbit.Configuration;
 
-namespace RabbitInstaller
+namespace RabbitCli
 {
     class Program
     {
@@ -20,11 +22,14 @@ namespace RabbitInstaller
         private static List<SimulationConsumer> _subscribers;
         private static string _queueFile = "queues.txt";
 
+        public static ILog Logger { get; private set; }
+
         static void Main(string[] args)
         {
             _subscribers = new List<SimulationConsumer>();
             _modelConfig = LoadJson<ModelConfig>("setup.json");
-
+            Logger = LogManager.GetLogger("root");
+            XmlConfigurator.Configure();
             var configuration = new RawRabbitConfiguration
             {
                 Hostnames = _modelConfig.Hosts.ToList(),

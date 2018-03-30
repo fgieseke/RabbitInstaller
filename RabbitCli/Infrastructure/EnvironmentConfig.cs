@@ -1,4 +1,4 @@
-﻿namespace RabbitInstaller.Infrastructure
+﻿namespace RabbitCli.Infrastructure
 {
     public class EnvironmentConfigFile
     {
