@@ -100,6 +100,9 @@ namespace RabbitCli.Infrastructure
 
         public ModelBuilder BindExchange(string exchangeName, ExchangeBindingConfiguration[] bindings)
         {
+            if (bindings == null)
+                return this;
+
             try
             {
                 foreach (var binding in bindings)

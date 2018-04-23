@@ -1,0 +1,100 @@
+﻿{
+  "hosts": [ "npk-mp-q-dev1.netrtl.com" ],
+  "user": "queueadmin",
+  "password": "Nu9chiegh",
+  "vhost": "/",
+  "desc":  "Einstellungen für die Dev-Queue" ,
+  "executableBasePath": "c:\\",
+  "exchanges": [
+    {
+      "exchangeName": "System",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {}
+    },
+    {
+      "exchangeName": "Emitter-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "Translator-In",
+            "routingKeys": [ "raw.#" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "Translator-In",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false
+    },
+    {
+      "exchangeName": "Translator-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "EnricherCache-In",
+            "routingKeys": [ "doc.*.*.deleted", "doc.*.*.created" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "EnricherCache-In",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false
+    },
+    {
+      "exchangeName": "EnricherCache-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "IndexerGateway",
+            "routingKeys": [ "doc.*.*.refreshed" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "DataGateway",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "EnricherCache-In",
+            "routingKeys": [ "doc.*.*.update", "doc.*.*.delete", "doc.*.*.create" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "IndexerGateway",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false
+    }
+
+  ]
+}

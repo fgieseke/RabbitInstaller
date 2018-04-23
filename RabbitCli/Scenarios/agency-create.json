@@ -21,10 +21,6 @@
       "routingMode": "create"
     },
     {
-      "exchangeName": "AgencyStore-In",
-      "variant": "Store"
-    },
-    {
       "exchangeName": "Indexer-In",
       "variant": "Index",
       "routingMode": "index"
@@ -44,7 +40,6 @@
     "exchangeName": "Emitter-Out",
     "routingKeys": [ "raw.text.xyz.create", "raw.text.abc.create", "raw.text.dpa.create" ]
   }
-
 }
 
 

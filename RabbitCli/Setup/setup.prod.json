@@ -1,0 +1,141 @@
+﻿{
+  "hosts": [ "npk-mp-q1.netrtl.com", "npk-mp-q2.netrtl.com", "npk-mp-q3.netrtl.com" ],
+  "user": "queueadmin",
+  "password": "Nu9chiegh",
+  "vhost": "/",
+  "desc": "Einstellungen für die Prod-Queue",
+  "executableBasePath": "c:\\",
+  "exchanges": [
+    {
+      "exchangeName": "Service",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {}
+    },
+    {
+      "exchangeName": "Emitter-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "Translator-In",
+            "routingKeys": [ "raw.#" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "Translator-In",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {}
+    },
+
+    {
+      "exchangeName": "Translator-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "IndexerGateway",
+            "routingKeys": [ "doc.#" ]
+          },
+          {
+            "exchangeName": "EnricherCache-In",
+            "routingKeys": [ "doc.*.*.deleted", "doc.*.*.created" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "Enricher-In",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "binding": {}
+    },
+    {
+      "exchangeName": "Enricher-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "Indexer-In",
+            "routingKeys": [ "partial.*.*.enriched" ]
+          },
+          {
+            "exchangeName": "EnricherCache-In",
+            "routingKeys": [ "partial.*.*.enriched" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "Indexer-In",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {}
+    },
+    {
+      "exchangeName": "Indexer-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "Enricher-In",
+            "routingKeys": [ "doc.*.*.indexed" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "EnricherCache-In",
+      "exchangeType": "Topic",
+      "direction": "in",
+
+      "durable": true,
+      "autoDelete": false,
+      "binding": {}
+    },
+    {
+      "exchangeName": "EnricherCache-Out",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "Indexer-In",
+            "routingKeys": [ "doc.*.*.refresh" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "IndexerGateway",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {}
+    }
+  ]
+}

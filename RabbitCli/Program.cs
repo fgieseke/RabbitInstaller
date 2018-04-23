@@ -23,8 +23,13 @@ namespace RabbitCli
 
         static void Main(string[] args)
         {
+
+            //var setupFile = @".\Setup\setup.json";
+            var setupFile = ConfigurationManager.AppSettings["setupFilename"];
+            Console.WriteLine($"Using {setupFile}");
+
             _subscribers = new List<SimulationConsumer>();
-            _modelConfig = LoadJson<ModelConfig>("setup.json");
+            _modelConfig = LoadJson<ModelConfig>(setupFile);
 
             var configuration = new RawRabbitConfiguration
             {
@@ -37,10 +42,10 @@ namespace RabbitCli
             if (_modelConfig.Port > 0)
             {
                 configuration.Port = _modelConfig.Port;
-                
+
             }
 
-                using (var connection = BusClientFactory.CreateConnection(configuration))
+            using (var connection = BusClientFactory.CreateConnection(configuration))
             {
 
                 try
@@ -73,7 +78,7 @@ namespace RabbitCli
                                 Console.Clear();
                                 break;
                             case "setup":
-                                _modelConfig = LoadJson<ModelConfig>("setup.json");
+                                _modelConfig = LoadJson<ModelConfig>(setupFile);
                                 SetupModel(connection, _modelConfig);
                                 break;
                             case "sc":
@@ -165,7 +170,7 @@ namespace RabbitCli
 
         private static void ListScenarios()
         {
-            string[] scenarioConfigFiles = {};
+            string[] scenarioConfigFiles = { };
             try
             {
                 scenarioConfigFiles = Directory.GetFiles("Scenarios", "*.json");
@@ -284,7 +289,6 @@ namespace RabbitCli
                 Console.WriteLine(e.Message);
                 return;
             }
-            
             if (_lastScenario != null && _lastScenario != scenarioName && !CleanUpScenario(envConfigFile.Environments, scenario, _lastScenario))
                 return;
 
@@ -472,9 +476,7 @@ namespace RabbitCli
         private static bool CleanUpScenario(EnvironmentConfig[] envConfig, ScenarioConfigFile scenarioConfigFile,
             string lastScenario)
         {
-            Console.Write("Clean up old environment.");
-            Console.WriteLine("Done.");
-            Console.WriteLine("Could not clean up environment.");
+            Console.WriteLine("Not implemented");
             return true;
         }
     }

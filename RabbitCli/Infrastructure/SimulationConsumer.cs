@@ -41,7 +41,7 @@ namespace RabbitCli.Infrastructure
                     basicProperties: e.BasicProperties,
                     body: body);
                 var fcolor = Console.ForegroundColor;
-                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.WriteLine($"[{_name}] Routed message to '{_consumerPublish.ExchangeName}' with key: {newRoutingKey}");
                 Console.ForegroundColor = fcolor;
             }
@@ -66,7 +66,7 @@ namespace RabbitCli.Infrastructure
         public void Start()
         {
             Consumer.Received += Consume;
-            _model.BasicConsume(_queueName, autoAck: true, consumer: Consumer);
+            _model.BasicConsume(_queueName,  true, consumer: Consumer);
         }
 
         public void Stop()

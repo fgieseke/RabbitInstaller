@@ -3,8 +3,17 @@
   "user": "guest",
   "password": "guest",
   "vhost": "/",
-  "executableBasePath": "C:\\Dev\\VS2017\\RabbitInstaller\\",
+  "desc": "Experimentelle Einstellungen für die Docker-Queue",
+  "executableBasePath": "c:\\",
   "exchanges": [
+    {
+      "exchangeName": "Service",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {}
+    },
     {
       "exchangeName": "Emitter-Out",
       "exchangeType": "Topic",
@@ -19,7 +28,6 @@
           }
         ]
       }
-
     },
     {
       "exchangeName": "Translator-In",
@@ -38,37 +46,12 @@
       "binding": {
         "exchanges": [
           {
-            "exchangeName": "Indexer-In",
-            "routingKeys": [ "doc.*.*.delete" ]
+            "exchangeName": "IndexerGateway",
+            "routingKeys": [ "doc.#" ]
           },
           {
             "exchangeName": "EnricherCache-In",
             "routingKeys": [ "doc.*.*.delete", "doc.*.*.create", "doc.*.*.serial" ]
-          },
-          {
-            "exchangeName": "AgencyStore-In",
-            "routingKeys": [ "doc.text.*.serial", "doc.text.*.delete" ]
-          }
-        ]
-      }
-    },
-    {
-      "exchangeName": "AgencyStore-In",
-      "exchangeType": "Topic",
-      "direction": "in",
-      "durable": true,
-      "binding": {}
-    },
-    {
-      "exchangeName": "AgencyStore-Out",
-      "exchangeType": "Topic",
-      "direction": "out",
-      "durable": true,
-      "binding": {
-        "exchanges": [
-          {
-            "exchangeName": "Indexer-In",
-            "routingKeys": [ "doc.*.*.bulk" ]
           }
         ]
       }

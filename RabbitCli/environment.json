@@ -150,20 +150,6 @@
           }
         }
       ]
-    },
-    {
-      "exchangeName": "AgencyStore-In",
-      "variants": [
-        {
-          "name": "Store",
-          "queueNamePattern": "AgencyStore-Queue",
-          "consumer": {
-            "binding": {
-              "routingKeys": [ "doc.*.*.serial", "doc.*.*.delete" ]
-            }
-          }
-        }
-      ]
     }
   ]
 } 
