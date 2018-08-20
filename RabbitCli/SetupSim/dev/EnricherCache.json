@@ -1,0 +1,48 @@
+{
+  "exchangeName": null,
+  "queueNamePattern": null,
+  "consumer": [
+    {
+      "executable": "simulation",
+      "message": "Deleted entry from EnricherCache",
+      "queueName": "EnricherCache-RemoveV1-Queue",
+      "routingKey": "doc.*.*.delete"
+    },
+    {
+      "executable": "simulation",
+      "message": "Deleted entry from EnricherCache",
+      "queueName": "EnricherCache-Remove-Queue",
+      "routingKey": "doc.*.*.deleted"
+    },
+    {
+      "executable": "simulation",
+      "message": "Updated EnricherCache with entry",
+      "queueName": "EnricherCache-PartialV1-Queue",
+      "routingKey": "doc.*.*.update"
+    }
+  ],
+  "router": [
+    {
+      "executable": "simulation",
+      "exchangeName": "EnricherCache-Out",
+      "to": "doc.*.*.refreshed",
+      "queueName": "EnricherCache-RefreshV1-Queue",
+      "routingKey": "doc.*.*.create"
+    },
+    {
+      "executable": "simulation",
+      "exchangeName": "EnricherCache-Out",
+      "to": "doc.*.*.refreshed",
+      "queueName": "EnricherCache-Refresh-Queue",
+      "routingKey": "doc.*.*.created"
+    }
+  ],
+  "ignored": [],
+  "deleted": [],
+  "unbind": [
+    {
+      "queueName": "EnricherCache-Partial-Queue",
+      "routingKey": "doc.*.*.updated"
+    }
+  ]
+}

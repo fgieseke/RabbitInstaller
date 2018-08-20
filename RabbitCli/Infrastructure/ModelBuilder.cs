@@ -48,36 +48,37 @@ namespace RabbitCli.Infrastructure
             {
                 _exchangeMap.Add(exchangeConfig.ExchangeName, exchangeConfig);
 
-                Console.Write($"Creating exchange '{exchangeConfig.ExchangeName}'...");
+                Console.Write($"Creating exchange '{exchangeConfig.ExchangeName}'... ");
 
                 _model.ExchangeDeclare(exchangeConfig.ExchangeName, exchangeConfig.ExchangeType.ToLower(), exchangeConfig.Durable, exchangeConfig.AutoDelete, exchangeConfig.Arguments);
-                Console.WriteLine(" Done!");
+                Console.WriteLine("Done!");
                 return this;
 
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine($"Failed!\n{ex.Message}");
                 throw;
             }
         }
-        public ModelBuilder DeleteExchange(ExchangeConfiguration exchangeConfig)
+        public ModelBuilder DeleteExchange(string exchangeName)
         {
+            _exchangeMap.Remove(exchangeName);
+
+            Console.Write($"Deleting exchange '{exchangeName}'... ");
             try
             {
-                _exchangeMap.Remove(exchangeConfig.ExchangeName);
-
-                Console.Write($"Deleting exchange '{exchangeConfig.ExchangeName}'...");
-
-                _model.ExchangeDelete(exchangeConfig.ExchangeName);
-                Console.WriteLine(" Done!");
+                _model.ExchangeDeclarePassive(exchangeName);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Unknown exchange!");
                 return this;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-                throw;
-            }
+            _model.ExchangeDelete(exchangeName);
+            Console.WriteLine("Done!");
+            return this;
+
         }
 
         public ModelBuilder CreateQueue(QueueConfiguration queueConfig)
@@ -98,7 +99,7 @@ namespace RabbitCli.Infrastructure
             }
         }
 
-        public ModelBuilder BindExchange(string exchangeName, ExchangeBindingConfiguration[] bindings)
+        public ModelBuilder BindExchange(string exchangeName, IEnumerable<ExchangeBindingConfiguration> bindings)
         {
             if (bindings == null)
                 return this;
@@ -132,6 +133,10 @@ namespace RabbitCli.Infrastructure
                         }
                         Console.WriteLine("Done!");
                     }
+                    else 
+                    {
+                        WriteError($"Can not add binding from exchange '{exchangeName}' to exchange '{binding.ExchangeName}' without routingkey and arguments! ");
+                    }
                 }
                 return this;
 
@@ -145,6 +150,8 @@ namespace RabbitCli.Infrastructure
 
         public ModelBuilder UnbindExchange(string exchangeName, ExchangeBindingConfiguration[] bindings)
         {
+            if (bindings == null)
+                return this;
             try
             {
                 foreach (var binding in bindings)
@@ -219,6 +226,12 @@ namespace RabbitCli.Infrastructure
                 publisher.Start();
             }
         }
-
+        private static void WriteError(string msg)
+        {
+            var color = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Magenta;
+            Console.WriteLine(msg);
+            Console.ForegroundColor = color;
+        }
     }
 }

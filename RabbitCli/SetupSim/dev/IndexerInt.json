@@ -1,0 +1,31 @@
+{
+  "exchangeName": "IndexerIntGateway",
+  "queueNamePattern": null,
+  "consumer": [
+    {
+      "executable": "simulation",
+      "message": "Deleted doc in int index",
+      "queueName": "IndexerIntDeleteQueue_Indexer",
+      "routingKey": "doc.*.#.index.delete"
+    },
+    {
+      "executable": "simulation",
+      "message": "Updated doc in int index",
+      "queueName": "IndexerIntUpdateQueue_Indexer",
+      "routingKey": "doc.*.#.index.update"
+    }
+  ],
+  "router": [
+    {
+      "executable": "simulation",
+      "message": "Indexed document in int index.",
+      "exchangeName": "DataGateway",
+      "to": "doc.*.enrich",
+      "queueName": "IndexerIntQueue_Indexer",
+      "routingKey": "doc.*.*.refreshed"
+    }
+  ],
+  "ignored": [],
+  "deleted": [],
+  "unbind": []
+}

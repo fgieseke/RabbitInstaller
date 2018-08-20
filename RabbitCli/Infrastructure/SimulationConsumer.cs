@@ -7,42 +7,80 @@ namespace RabbitCli.Infrastructure
 {
     public class SimulationConsumer : ISimulationConsumer
     {
-        private readonly IModel _model;
-        private readonly string _name;
+        protected readonly IModel Model;
+        protected readonly string Name;
         private readonly string _queueName;
-        private readonly ConsumerPublishConfig _consumerPublish;
+        private readonly string _message;
 
-        public SimulationConsumer(IModel model, string name, string queueName, ConsumerPublishConfig consumerPublish = null)
+        public SimulationConsumer(IModel model, string name, string queueName, string message = null, bool isConsumer = true)
         {
-            _model = model;
-            _name = name;
+            Model = model;
+            Name = name;
             _queueName = queueName;
-            _consumerPublish = consumerPublish;
+            _message = message;
 
-            Consumer = new EventingBasicConsumer(_model);
-            Console.WriteLine($"Created consumer '{_name}' on '{queueName}'.");
+            Consumer = new EventingBasicConsumer(Model);
+            if (isConsumer)
+            {
+                Console.WriteLine($"Created consumer '{Name}' on '{queueName}'.");
+            }
 
         }
 
-        private void Consume(object sender, BasicDeliverEventArgs e)
+        protected virtual void Consume(object sender, BasicDeliverEventArgs e)
         {
             var body = e.Body;
             var message = Encoding.UTF8.GetString(body);
             var color = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"[{_name}] Received message from exchange '{e.Exchange}' with routingkey '{e.RoutingKey}' : {message}.");
+            Console.WriteLine($"[{Name}] Received message from exchange '{e.Exchange}' with routingkey '{e.RoutingKey}'.");
+            if (_message != null)
+                Console.WriteLine($"[{Name}] {_message}");
             Console.ForegroundColor = color;
+        }
+
+        public EventingBasicConsumer Consumer { get; }
+
+        public void Start()
+        {
+            Consumer.Received += Consume;
+            Model.BasicConsume(_queueName, true, consumer: Consumer);
+        }
+
+        public void Stop()
+        {
+            Consumer.Received -= Consume;
+        }
+
+    }
+
+    public class SimulationRouter : SimulationConsumer
+    {
+        private readonly ConsumerPublishConfig _consumerPublish;
+
+        public SimulationRouter(IModel model, string name, string queueName, ConsumerPublishConfig consumerPublish, string message = null)
+            : base(model, name, queueName, message, false)
+        {
+            _consumerPublish = consumerPublish;
+            Console.WriteLine($"Created router '{Name}' on '{queueName}'.");
+        }
+
+        protected override void Consume(object sender, BasicDeliverEventArgs e)
+        {
+            base.Consume(sender, e);
+
 
             if (_consumerPublish != null)
             {
                 var newRoutingKey = TransformRoutingKey(e.RoutingKey, _consumerPublish.RoutingKey);
-                _model.BasicPublish(exchange: _consumerPublish.ExchangeName,
+                Model.BasicPublish(exchange: _consumerPublish.ExchangeName,
                     routingKey: newRoutingKey,
                     basicProperties: e.BasicProperties,
-                    body: body);
+                    body: e.Body);
+
                 var fcolor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine($"[{_name}] Routed message to '{_consumerPublish.ExchangeName}' with key: {newRoutingKey}");
+                Console.WriteLine($"[{Name}] Routed message to '{_consumerPublish.ExchangeName}' with key: {newRoutingKey}");
                 Console.ForegroundColor = fcolor;
             }
 
@@ -58,21 +96,9 @@ namespace RabbitCli.Infrastructure
             {
                 newKeyParts.Add(newParts[i] == "*" ? parts[i] : newParts[i]);
             }
-            return string.Join(".",  newKeyParts);
+            return string.Join(".", newKeyParts);
         }
 
-        public EventingBasicConsumer Consumer { get; }
-
-        public void Start()
-        {
-            Consumer.Received += Consume;
-            _model.BasicConsume(_queueName,  true, consumer: Consumer);
-        }
-
-        public void Stop()
-        {
-            Consumer.Received -= Consume;
-        }
 
     }
 }

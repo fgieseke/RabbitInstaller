@@ -1,0 +1,33 @@
+{
+  "exchangeName": "EnricherGateway",
+  "queueNamePattern": null,
+  "consumer": [],
+  "router": [
+    {
+      "executable": "simulation",
+      "exchangeName": "DataGateway",
+      "to": "doc.*.index.update",
+      "queueName": "EnricherTextRazorTextQueue_EnricherServiceBusClient",
+      "routingKey": "doc.text.enrich"
+    },
+    {
+      "executable": "simulation",
+      "exchangeName": "DataGateway",
+      "to": "doc.*.index.update",
+      "queueName": "EnricherKitKeywordsVideoQueue_EnricherServiceBusClient",
+      "routingKey": "doc.video.enrich"
+    }
+  ],
+  "ignored": [
+    {
+      "queueName": "EnricherCategoryPredictionQueue",
+      "routingKey": "*"
+    },
+    {
+      "queueName": "EnricherCategoryPredictionQueue",
+      "routingKey": "doc.video.enrich"
+    }
+  ],
+  "deleted": [],
+  "unbind": []
+}

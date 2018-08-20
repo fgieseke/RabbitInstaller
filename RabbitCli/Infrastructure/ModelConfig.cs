@@ -10,15 +10,29 @@ namespace RabbitCli.Infrastructure
         public string User { get; set; }
         public string Password { get; set; }
         public string VHost { get; set; }
-        public ExchangeModelConfig[] Exchanges { get; set; }
         public int Port { get; set; }
+    }
+
+
+    public class SetupConfig
+    {
+        public ExchangeModelConfig[] Exchanges { get; set; }
         public string ExecutableBasePath { get; set; }
     }
 
     public class ExchangeModelConfig : ExchangeConfiguration
     {
         public BindingModelConfig Binding { get; set; }
-        public string  Direction { get; set; }
+        public string Direction { get; set; }
+        /// <summary>
+        /// If True this Exchange will not be deleted on cleanup and In/Out-Binding-Rules will not be checked
+        /// </summary>
+        public bool IsLegacy { get; set; }
+
+        /// <summary>
+        /// If true it defines an alternate Exchange for this exchange for unrouted messages
+        /// </summary>
+        public bool KeepUnroutedMessages { get; set; }
     }
 
     public class BindingModelConfig

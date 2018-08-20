@@ -1,0 +1,18 @@
+﻿{
+  "steps": [
+    "Creates raw delete messages for archive and vpms",
+    "Transforms it to doc",
+    "EnricherCache removes doc (removeFromDb)",
+    "Indexer consumes message (send2index)",
+    "Enricher is not envolved"
+  ],
+  "emitter": [
+    {
+      "exchangeName": "DataGateway",
+      "routingKeys": [
+        "raw.vpms.remove",
+        "raw.archive.remove"
+      ]
+    }
+  ]
+}

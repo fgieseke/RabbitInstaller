@@ -1,13 +1,10 @@
 ﻿{
-  "hosts": [ "npk-mp-q1.netrtl.com", "npk-mp-q2.netrtl.com", "npk-mp-q3.netrtl.com" ],
-  "user": "queueadmin",
-  "password": "Nu9chiegh",
-  "vhost": "/",
+
   "desc": "Einstellungen für die Prod-Queue",
   "executableBasePath": "c:\\",
   "exchanges": [
     {
-      "exchangeName": "Service",
+      "exchangeName": "System",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
@@ -20,11 +17,16 @@
       "direction": "out",
       "durable": true,
       "autoDelete": false,
+      "keepUnroutedMessages":  true,
       "binding": {
         "exchanges": [
           {
             "exchangeName": "Translator-In",
             "routingKeys": [ "raw.#" ]
+          },
+          {
+            "exchangeName": "Indexer-In",
+            "routingKeys": [ "doc.#" ]
           }
         ]
       }
@@ -34,22 +36,18 @@
       "exchangeType": "Topic",
       "direction": "in",
       "durable": true,
-      "autoDelete": false,
-      "binding": {}
+      "keepUnroutedMessages": true,
+      "autoDelete": false
     },
-
     {
       "exchangeName": "Translator-Out",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
+      "keepUnroutedMessages": true,
       "autoDelete": false,
       "binding": {
         "exchanges": [
-          {
-            "exchangeName": "IndexerGateway",
-            "routingKeys": [ "doc.#" ]
-          },
           {
             "exchangeName": "EnricherCache-In",
             "routingKeys": [ "doc.*.*.deleted", "doc.*.*.created" ]
@@ -58,43 +56,100 @@
       }
     },
     {
-      "exchangeName": "Enricher-In",
+      "exchangeName": "EnricherCache-In",
       "exchangeType": "Topic",
       "direction": "in",
       "durable": true,
-      "binding": {}
+      "keepUnroutedMessages": true,
+      "autoDelete": false
     },
     {
-      "exchangeName": "Enricher-Out",
+      "exchangeName": "EnricherCache-Out",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
+      "keepUnroutedMessages": true,
+      "autoDelete": false,
       "binding": {
         "exchanges": [
           {
             "exchangeName": "Indexer-In",
-            "routingKeys": [ "partial.*.*.enriched" ]
-          },
-          {
-            "exchangeName": "EnricherCache-In",
-            "routingKeys": [ "partial.*.*.enriched" ]
+            "routingKeys": [ "doc.*.*.refreshed" ]
           }
         ]
       }
     },
     {
       "exchangeName": "Indexer-In",
-      "exchangeType": "Topic",
+      "exchangeType": "Headers",
       "direction": "in",
       "durable": true,
       "autoDelete": false,
-      "binding": {}
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "IndexerAll",
+            "arguments": {
+              "Environment": ""
+            }
+          },
+          {
+            "exchangeName": "IndexerProd",
+            "arguments": {
+              "Environment": "prod"
+            }
+          },
+          {
+            "exchangeName": "IndexerHavarie",
+            "arguments": {
+              "Environment": "havarie"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "IndexerAll",
+      "exchangeType": "Fanout",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "IndexerProd",
+            "routingKeys": [ "#" ]
+          },
+          {
+            "exchangeName": "IndexerHavarie",
+            "routingKeys": [ "#" ]
+          }
+        ]
+      }
+
+    },
+    {
+      "exchangeName": "IndexerProd",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "keepUnroutedMessages": true,
+      "autoDelete": false
+    },
+    {
+      "exchangeName": "IndexerHavarie",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "keepUnroutedMessages": true,
+      "autoDelete": false
     },
     {
       "exchangeName": "Indexer-Out",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
+      "keepUnroutedMessages": true,
       "autoDelete": false,
       "binding": {
         "exchanges": [
@@ -106,36 +161,32 @@
       }
     },
     {
-      "exchangeName": "EnricherCache-In",
+      "exchangeName": "Enricher-In",
       "exchangeType": "Topic",
       "direction": "in",
-
       "durable": true,
-      "autoDelete": false,
-      "binding": {}
+      "keepUnroutedMessages": false,
+      "autoDelete": false
     },
     {
-      "exchangeName": "EnricherCache-Out",
+      "exchangeName": "Enricher-Out",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
+      "keepUnroutedMessages": true,
       "autoDelete": false,
       "binding": {
         "exchanges": [
           {
             "exchangeName": "Indexer-In",
-            "routingKeys": [ "doc.*.*.refresh" ]
+            "routingKeys": [ "partial.#" ]
+          },
+          {
+            "exchangeName": "EnricherCache-In",
+            "routingKeys": [ "partial.#" ]
           }
         ]
       }
-    },
-    {
-      "exchangeName": "IndexerGateway",
-      "exchangeType": "Topic",
-      "direction": "in",
-      "durable": true,
-      "autoDelete": false,
-      "binding": {}
     }
   ]
 }

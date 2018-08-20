@@ -1,13 +1,9 @@
 ﻿{
-  "hosts": [ "localhost" ],
-  "user": "guest",
-  "password": "guest",
-  "vhost": "/",
   "desc": "Experimentelle Einstellungen für die Docker-Queue",
-  "executableBasePath": "c:\\",
+  "executableBasePath": "d:\\",
   "exchanges": [
     {
-      "exchangeName": "Service",
+      "exchangeName": "System",
       "exchangeType": "Topic",
       "direction": "out",
       "durable": true,
@@ -34,8 +30,7 @@
       "exchangeType": "Topic",
       "direction": "in",
       "durable": true,
-      "autoDelete": false,
-      "binding": {}
+      "autoDelete": false
     },
     {
       "exchangeName": "Translator-Out",
@@ -46,60 +41,8 @@
       "binding": {
         "exchanges": [
           {
-            "exchangeName": "IndexerGateway",
-            "routingKeys": [ "doc.#" ]
-          },
-          {
             "exchangeName": "EnricherCache-In",
-            "routingKeys": [ "doc.*.*.delete", "doc.*.*.create", "doc.*.*.serial" ]
-          }
-        ]
-      }
-    },
-    {
-      "exchangeName": "Enricher-In",
-      "exchangeType": "Topic",
-      "direction": "in",
-      "durable": true,
-      "binding": {}
-    },
-    {
-      "exchangeName": "Enricher-Out",
-      "exchangeType": "Topic",
-      "direction": "out",
-      "durable": true,
-      "binding": {
-        "exchanges": [
-          {
-            "exchangeName": "Indexer-In",
-            "routingKeys": [ "partial.*.*.enrich" ]
-          },
-          {
-            "exchangeName": "EnricherCache-In",
-            "routingKeys": [ "partial.*.*.enrich" ]
-          }
-        ]
-      }
-    },
-    {
-      "exchangeName": "Indexer-In",
-      "exchangeType": "Topic",
-      "direction": "in",
-      "durable": true,
-      "autoDelete": false,
-      "binding": {}
-    },
-    {
-      "exchangeName": "Indexer-Out",
-      "exchangeType": "Topic",
-      "direction": "out",
-      "durable": true,
-      "autoDelete": false,
-      "binding": {
-        "exchanges": [
-          {
-            "exchangeName": "Enricher-In",
-            "routingKeys": [ "doc.*.*.indexed" ]
+            "routingKeys": [ "doc.*.*.deleted", "doc.*.*.created" ]
           }
         ]
       }
@@ -109,8 +52,7 @@
       "exchangeType": "Topic",
       "direction": "in",
       "durable": true,
-      "autoDelete": false,
-      "binding": {}
+      "autoDelete": false
     },
     {
       "exchangeName": "EnricherCache-Out",
@@ -121,11 +63,81 @@
       "binding": {
         "exchanges": [
           {
-            "exchangeName": "Indexer-In",
-            "routingKeys": [ "doc.*.*.refresh" ]
+            "exchangeName": "IndexerGateway",
+            "routingKeys": [ "doc.*.*.refreshed" ]
           }
         ]
       }
+    },
+    // Legacy-Exchanges:: Will not be deleted on cleanup
+    {
+      "exchangeName": "DataGateway",
+      "exchangeType": "Topic",
+      "direction": "out",
+      "durable": true,
+      "autoDelete": false,
+      "isLegacy": true,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "EnricherCache-In",
+            "routingKeys": [ "doc.*.#.index.update", "doc.*.#.index.delete", "doc.*.#.index.create" ]
+          },
+          {
+            "exchangeName": "IndexerGateway",
+            "routingKeys": [ "doc.*.#.index.update", "doc.*.#.index.delete" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "IndexerGateway",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false,
+      "isLegacy": true,
+      "binding": {
+        "exchanges": [
+          {
+            "exchangeName": "IndexerHavarieGateway",
+            "routingKeys": [ "doc.*.*.refreshed", "doc.*.#.index.*" ]
+          },
+          {
+            "exchangeName": "IndexerProdGateway",
+            "routingKeys": [ "doc.*.*.refreshed", "doc.*.#.index.*" ]
+          },
+          {
+            "exchangeName": "EnricherGateway",
+            "routingKeys": [ "doc.*.enrich", "doc.*.enrich.#" ]
+          }
+        ]
+      }
+    },
+    {
+      "exchangeName": "IndexerHavarieGateway",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false,
+      "isLegacy": true
+    },
+    {
+      "exchangeName": "IndexerProdGateway",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false,
+      "isLegacy": true
+    },
+    {
+      "exchangeName": "EnricherGateway",
+      "exchangeType": "Topic",
+      "direction": "in",
+      "durable": true,
+      "autoDelete": false,
+      "isLegacy": true
     }
+
   ]
 }

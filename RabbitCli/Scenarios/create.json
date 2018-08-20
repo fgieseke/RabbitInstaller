@@ -1,0 +1,28 @@
+﻿{
+  "steps": [
+    "Creates raw text messages",
+    "Transforms it to doc",
+    "EnricherCache refreshes doc",
+    "Indexer routes message to enricher",
+    "Enricher sends partial updates",
+    "Indexer consumes partial message (send2index)",
+    "EnricherCache consumes partial message (save2db)"
+  ],
+  "emitter": [
+    {
+      "exchangeName": "Emitter-Out",
+      "routingKeys": [
+        "raw.text.xyz.created",
+        "raw.text.abc.created",
+        "raw.text.aptn.created"
+      ]
+    },
+    {
+      "exchangeName": "DataGateway",
+      "routingKeys": [
+        "raw.vpms.create",
+        "raw.archive.create"
+      ]
+    }
+  ]
+}
