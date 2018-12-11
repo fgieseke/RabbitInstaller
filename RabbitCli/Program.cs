@@ -7,6 +7,7 @@ using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using EasyNetQ.Management.Client;
 using EasyNetQ.Management.Client.Model;
@@ -1235,7 +1236,6 @@ namespace RabbitCli
                 {
                     Console.WriteLine($"Moving messages from queue '{queueName}' ... ");
                     var messageCount = 0;
-                    var lastMessageCount = 0;
                     var isRunning = true;
 
                     var consumer = new EventingBasicConsumer(channel);
