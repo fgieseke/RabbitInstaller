@@ -29,6 +29,7 @@ namespace RabbitCli
         private static string _currentEnv;
         private static SetupConfig _setupConfig;
         private static string _lastSimulation;
+        private const string UNROUTED_NAME = "Unrouted";
 
         static void Main(string[] args)
         {
@@ -674,7 +675,7 @@ namespace RabbitCli
                         var alternateExchangeName = GetAlternateExchangeName(exchangeConfig.ExchangeName);
                         modelBuilder.DeleteExchange(alternateExchangeName);
 
-                        modelBuilder.Model.QueueDelete($"{alternateExchangeName}-UnroutedMessages-Queue");
+                        modelBuilder.Model.QueueDelete($"{exchangeConfig.ExchangeName}-{UNROUTED_NAME}Messages-Queue");
                     }
 
                 }
@@ -756,7 +757,7 @@ namespace RabbitCli
             //    ? exchangeName.Substring(0, lastIndexPos)
             //    : exchangeName;
             //var postFix = lastIndexPos > 0 ? exchangeName.Substring(lastIndexPos) : "";
-            var alternateExchangeName = $"{exchangeName}-Unrouted";
+            var alternateExchangeName = $"{exchangeName}-{UNROUTED_NAME}";
             return alternateExchangeName;
         }
 
@@ -1196,9 +1197,20 @@ namespace RabbitCli
 
         private static void MoveMessages(IConnection connection, string queueName, string exchangeName, string routingKey)
         {
+            var runId = Guid.NewGuid();
+            var runIdExchangeName = $"{runId}_RABBITCLI_MM";
             using (var channel = new ModelBuilder(connection).Model)
             {
-
+                try
+                {
+                    channel.ExchangeDeclare(runIdExchangeName, "topic", false, true);
+                    channel.QueueBind(queueName, runIdExchangeName, "#");
+                }
+                catch (Exception e)
+                {
+                    WriteError($"Couldn't create temporary move message exchange: '{runIdExchangeName}'!");
+                    return;
+                }
                 try
                 {
                     channel.ExchangeDeclarePassive(exchangeName);
@@ -1231,8 +1243,22 @@ namespace RabbitCli
 
                     consumer.Received += (sender, e) =>
                     {
-                        if (routingKey != null && !RoutingkeyMatches(routingKey, e.RoutingKey))
+                        // Skip message consume, if we should stop running or we already processed this message in current run.
+                        if (!isRunning || (e.BasicProperties.Headers.ContainsKey("RunId") && runId.ToString() ==
+                                           Encoding.UTF8.GetString((byte[])e.BasicProperties.Headers["RunId"])))
+                        {
+                            channel.BasicReject(e.DeliveryTag, true);
+                            isRunning = false;
                             return;
+                        }
+
+                        if (!String.IsNullOrEmpty(routingKey) && !RoutingkeyMatches(routingKey, e.RoutingKey))
+                        {
+                            e.BasicProperties.Headers["RunId"] = runId.ToString();
+                            channel.BasicPublish(runIdExchangeName, e.RoutingKey, e.BasicProperties, e.Body);
+                            channel.BasicAck(e.DeliveryTag, false);
+                            return;
+                        }
 
                         lock (locker)
                         {
@@ -1243,39 +1269,12 @@ namespace RabbitCli
                         Console.Write(".");
                     };
 
-
-                    var timer = new Timer
-                    {
-                        Interval = 5,
-                        AutoReset = true,
-                        Enabled = false
-                    };
-
-                    timer.Elapsed += (sender, e) =>
-                    {
-                        lock (locker)
-                        {
-                            if (lastMessageCount != messageCount)
-                            {
-                                lastMessageCount = messageCount;
-                                return;
-                            }
-                        }
-
-                        timer.Stop();
-                        channel.BasicCancel(subscription);
-                        isRunning = false;
-                        Console.WriteLine("Done!");
-
-                    };
-
-                    subscription = channel.BasicConsume(queueName, true, consumer);
-                    timer.Start();
+                    subscription = channel.BasicConsume(queueName, false, consumer);
 
                     while (isRunning)
                     {
                         // wait
-                        Thread.Sleep(1000);
+                        Thread.Sleep(100);
                     }
 
                     Console.WriteLine($"Moved {messageCount} messages!");
@@ -1283,6 +1282,11 @@ namespace RabbitCli
                 catch (Exception ex)
                 {
                     WriteError("Error moving messages: " + ex.Message);
+
+                }
+                finally
+                {
+                    channel.ExchangeDelete(runIdExchangeName, false);
                     if (subscription != null)
                     {
                         channel.BasicCancel(subscription);
