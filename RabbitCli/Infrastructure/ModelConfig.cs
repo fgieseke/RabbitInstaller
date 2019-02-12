@@ -22,6 +22,14 @@ namespace RabbitCli.Infrastructure
 
     public class ExchangeModelConfig : ExchangeConfiguration
     {
+        public ExchangeModelConfig()
+        {
+            AutoDelete = false;
+            Durable = true;
+            ExchangeType = "topic";
+            IsLegacy = false;
+        }
+
         public BindingModelConfig Binding { get; set; }
         public string Direction { get; set; }
         /// <summary>
@@ -30,7 +38,7 @@ namespace RabbitCli.Infrastructure
         public bool IsLegacy { get; set; }
 
         /// <summary>
-        /// If true it defines an alternate Exchange for this exchange for unrouted messages
+        /// If true it defines an alternate exchange for this exchange for unrouted messages
         /// </summary>
         public bool KeepUnroutedMessages { get; set; }
     }

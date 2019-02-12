@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,7 +15,6 @@ using EasyNetQ.Management.Client.Model;
 using RabbitMQ.Client.Events;
 using RawRabbit.Configuration.Exchange;
 using RawRabbit.Configuration.Queue;
-using Timer = System.Timers.Timer;
 
 namespace RabbitCli
 {
@@ -25,14 +25,11 @@ namespace RabbitCli
         private static List<SimulationConsumer> _subscribers;
         private static string _queueFile = "queues.txt";
         private static bool _userInteractive;
-        private static Action<string> _switchEnvDelegate = env => { };
-        private static Action<string, string> _switchLoginDelegate = (u, p) => { };
         private static string _currentEnv;
         private static SetupConfig _setupConfig;
-        private static string _lastSimulation;
-        private const string UNROUTED_NAME = "Unrouted";
+        private static RabbitConnector _logonConfig;
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
 
             //var setupEnv = @".\Setup\setup.json";
@@ -40,6 +37,7 @@ namespace RabbitCli
 
             _subscribers = new List<SimulationConsumer>();
 
+            _logonConfig = null;
 
             _userInteractive = args == null || args.Length == 0;
 
@@ -54,19 +52,23 @@ namespace RabbitCli
             }
         }
 
-        private static RawRabbitConfiguration LoadAndGetRawRabbitConfiguration(string envFile)
+        private static RabbitConnector LoadAndGetRawRabbitConfiguration(string env)
         {
 
             try
             {
+                var envFile = Utils.GetEnvFileName(env);
+                Console.WriteLine($"Using {envFile}.");
+
                 _modelConfig = Utils.LoadJson<ModelConfig>(envFile);
 
-                var configuration = new RawRabbitConfiguration
+                var configuration = new RabbitConnector
                 {
                     Hostnames = _modelConfig.Hosts.ToList(),
                     Username = _modelConfig.User,
                     Password = _modelConfig.Password,
                     VirtualHost = _modelConfig.VHost,
+                    Env = env,
                     RouteWithGlobalId = false
                 };
                 if (_modelConfig.Port > 0)
@@ -141,56 +143,37 @@ namespace RabbitCli
         private static void UserInteractive(string setupEnv)
         {
             _currentEnv = setupEnv;
-            var newEnv = _currentEnv;
-            string userName = null;
-            string passWord = null;
             var promt = "RabbitCLI";
             Console.SetIn(new StreamReader(Console.OpenStandardInput(8192))); // https://stackoverflow.com/questions/6081946/why-does-console-readline-have-a-limit-on-the-length-of-text-it-allows/6081967#6081967
             Console.WriteLine($"{promt} [{_currentEnv}]> type 'help' or '?' for command list.");
-            Console.WriteLine($"Switch connection using switch <env>. (env: dev/prod/havarie)");
+            Console.WriteLine($"Switch connection using switch <env>. (env: debug/white/orange)");
 
             var isRunning = true;
-            _switchEnvDelegate = (env) =>
-            {
-                newEnv = env;
-            };
-            _switchLoginDelegate = (user, pass) =>
-            {
-                userName = user;
-                passWord = pass;
-            };
+
+
+
 
             while (isRunning)
             {
-                var envFile = Utils.GetEnvFileName(_currentEnv);
-                var configuration = LoadAndGetRawRabbitConfiguration(envFile);
-                if (configuration == null)
+                if (_logonConfig?.Env != _currentEnv)
                 {
-                    WriteError($"Could not load '{envFile}'.");
-                    break;
-                }
-                if (userName != null)
-                {
-                    configuration.Username = userName;
-                }
-                else
-                {
-                    userName = configuration.Username;
+                    _logonConfig = LoadAndGetRawRabbitConfiguration(_logonConfig?.Env ?? _currentEnv);
+
+                    if (_logonConfig == null)
+                        return;
+
+                    _currentEnv = _logonConfig.Env;
                 }
 
-                if (passWord != null)
-                {
-                    configuration.Password = passWord;
-                }
-                Console.WriteLine($"Using {envFile}. Connected to: {string.Join(", ", configuration.Hostnames)}{configuration.VirtualHost}");
-                Console.WriteLine($"Logged in as user '{configuration.Username}'.");
-                using (var connection = BusClientFactory.CreateConnection(configuration))
+                Console.WriteLine($"  Connected to: { string.Join(", ", _logonConfig.Hostnames)}/{_logonConfig.VirtualHost}");
+                Console.WriteLine($"  Logged in as user '{_logonConfig.Username}'.");
+                using (var connection = _logonConfig.Connect())
                 {
                     try
                     {
                         while (true)
                         {
-                            Console.Write($"{promt} [{_currentEnv}]> ");
+                            Console.Write($"{promt} [{_currentEnv}/{_logonConfig.VirtualHost}]> ");
                             var command = Console.ReadLine();
 
                             if (command?.ToLower() == "x" || command?.ToLower() == "exit")
@@ -199,10 +182,9 @@ namespace RabbitCli
                                 break;
                             }
 
-                            ExecuteCommand(command?.Split(new[] { " " }, StringSplitOptions.RemoveEmptyEntries), connection, configuration);
-                            if (_currentEnv != newEnv || configuration.Username != userName)
+                            ExecuteCommand(command?.Split(new[] { " " }, StringSplitOptions.RemoveEmptyEntries), connection, _logonConfig);
+                            if (!_logonConfig.IsConnected)
                             {
-                                _currentEnv = newEnv;
                                 break; // close connection to reconnect with new one
                             }
                         }
@@ -237,25 +219,27 @@ namespace RabbitCli
                 {
                     case "?":
                     case "help":
-                        Console.WriteLine("setup <setupfile>                                                  : Setup infrastructure with setupfile (without .json-extention)");
-                        Console.WriteLine("cleanup [<setupfile>]                                              : Cleanup infrastructure: Removes all exchanges defined in setupfile (except legacy)!");
-                        Console.WriteLine("switch <targetEnv>                                                 : Switch server environment. (Defined in SetupEnv/env.<env>.json)");
-                        Console.WriteLine("login <username> <password>                                        : Login as user <userName>");
-                        Console.WriteLine("dq|deletequeue <queuename>                                         : Deletes a queue");
-                        Console.WriteLine("bq|bindqueue <queue> <exchangeNameFrom> <routingkey>               : Binds a queue from an exchange with routingkeys");
-                        Console.WriteLine("uq|unbindqueue <queue> <exchangeNameFrom> <routingkey>             : Unbinds a queue from an exchange with routingkeys");
-                        Console.WriteLine("dx|deleteexchange <exchangeName>                                   : Deletes an exchange");
-                        Console.WriteLine("ux|unbindexchange <exchangeNameFrom> <exchangeNameTo> <routingkey> : Unbinds an exchange from another exchange with routingkeys");
-                        Console.WriteLine("batch [<subfolder>] <batchName>                                    : Executes commands from batchfile (located under '\\SetupBatch\\<subfolder>')");
-                        Console.WriteLine("mm|movemessages <queueName> <targetExchange> [<routingKey>]        : Move messages from one queue to an exchange. Use routingKey to filter messages.");
-                        Console.WriteLine("cu|createuser <username> <password> <tag1>...<tagN>                : Create User with name, password and tags");
-                        Console.WriteLine("du|deleteuser <username>                                           : Delete User by name");
-                        Console.WriteLine("sup|setuserpermissions <username> <config> <write> <read>          : Set user permission with permissions for config, write, read");
-                        Console.WriteLine("sc|scenarions                                                      : List of scenarios");
-                        Console.WriteLine("sse|setupsimulationenv exchangeName exportFile                     : Setup simulation environment for exchange with reference to existing environment (located in Subfolder 'SetupEnv/Export')");
-                        Console.WriteLine("run <scenario-name> <simulationPath>                               : Runs a scenario with preconfigured simulations in SetupSim/<simulationPath>");
-                        Console.WriteLine("x|exit                                                             : exits CLI");
-                        Console.WriteLine("cls                                                                : console clear");
+                        Console.WriteLine("setup <setupfile>                                                        : Setup infrastructure with setupfile (without .json-extention)");
+                        Console.WriteLine("cleanup [<setupfile>]                                                    : Cleanup infrastructure: Removes all exchanges defined in setupfile (except legacy)!");
+                        Console.WriteLine("switch <targetEnv>                                                       : Switch server environment. (Defined in SetupEnv/env.<env>.json)");
+                        Console.WriteLine("vhost <hostname>                                                         : Switch virtual host.");
+                        Console.WriteLine("login <username> <password>                                              : Login as user <userName>");
+                        Console.WriteLine("dq|deletequeue <queuename>                                               : Deletes a queue");
+                        Console.WriteLine("bq|bindqueue <queue> <exchangeNameFrom> <routingkey>                     : Binds a queue from an exchange with routingkeys");
+                        Console.WriteLine("uq|unbindqueue <queue> <exchangeNameFrom> <routingkey>                   : Unbinds a queue from an exchange with routingkeys");
+                        Console.WriteLine("dx|deleteexchange <exchangeName>                                         : Deletes an exchange");
+                        Console.WriteLine("ux|unbindexchange <exchangeNameFrom> <exchangeNameTo> <routingkey>       : Unbinds an exchange from another exchange with routingkeys");
+                        Console.WriteLine("batch [<subfolder>] <batchName>                                          : Executes commands from batchfile (located under '\\SetupBatch\\<subfolder>')");
+                        Console.WriteLine("mm|movemessages <queueName> <targetExchange> [<routingKey>]              : Move messages from one queue to an exchange. Use routingKey to filter messages.");
+                        Console.WriteLine("mmq|movemessagestoqueue <sourceQueue> <targetQueue> [<routingKey>]       : Move messages directly from one queue to another queue. Use routingKey to filter messages.");
+                        Console.WriteLine("cu|createuser <username> <password> <tag1>...<tagN>                      : Create User with name, password and tags");
+                        Console.WriteLine("du|deleteuser <username>                                                 : Delete User by name");
+                        Console.WriteLine("sup|setuserpermissions <username> <config> <write> <read>                : Set user permission with permissions for config, write, read");
+                        Console.WriteLine("sc|scenarions                                                            : List of scenarios");
+                        Console.WriteLine("sse|setupsimulationenv exchangeName exportFile                           : Setup simulation environment for exchange with reference to existing environment (located in Subfolder 'SetupEnv/Export')");
+                        Console.WriteLine("run <scenario-name> <simulationPath>                                     : Runs a scenario with preconfigured simulations in SetupSim/<simulationPath>");
+                        Console.WriteLine("x|exit                                                                   : exits CLI");
+                        Console.WriteLine("cls                                                                      : console clear");
                         break;
                     case "cls":
                         Console.Clear();
@@ -278,6 +262,14 @@ namespace RabbitCli
                             return;
                         }
                         SwitchEnv(commandArgs[1]);
+                        break;
+                    case "vhost":
+                        if (commandArgs.Length < 2)
+                        {
+                            Console.WriteLine("\vhost requires a second argument 'virtualhost'!");
+                            return;
+                        }
+                        SwitchVhost(commandArgs[1]);
                         break;
                     case "login":
                         if (commandArgs.Length < 3)
@@ -391,7 +383,7 @@ namespace RabbitCli
                             string[] tags = { };
                             if (commandArgs.Length > 3)
                             {
-                                Array.Resize<string>(ref tags, commandArgs.Length - 3);
+                                Array.Resize(ref tags, commandArgs.Length - 3);
                                 Array.Copy(commandArgs, 3, tags, 0, commandArgs.Length - 3);
                             }
                             CreateUser(configuration, commandArgs[1], commandArgs[2], tags);
@@ -419,12 +411,25 @@ namespace RabbitCli
                             DeleteUser(configuration, commandArgs[1]);
                             break;
                         }
+                    case "mmq":
+                    case "movemessagestoqueue":
+                        {
+                            if (commandArgs.Length < 3)
+                            {
+                                Console.WriteLine("\nMoveMessagesToQueue requires arguments sourceQueue and targetQueue!");
+                                return;
+                            }
+
+                            var routingKey = commandArgs.Length > 3 ? commandArgs[3] : "";
+                            MoveMessagesToQueue(connection, commandArgs[1], commandArgs[2], routingKey);
+                            break;
+                        }
                     case "mm":
                     case "movemessages":
                         {
                             if (commandArgs.Length < 3)
                             {
-                                Console.WriteLine("\nMoveMessage requires  arguments queueName and targetExchange!");
+                                Console.WriteLine("\nMoveMessages requires arguments queueName and targetExchange!");
                                 return;
                             }
 
@@ -455,12 +460,18 @@ namespace RabbitCli
 
         private static void SwitchEnv(string env)
         {
-            _switchEnvDelegate?.Invoke(env);
+            _logonConfig.Env = env;
         }
 
-        public static void LoginAs(string userName, string password)
+        private static void SwitchVhost(string vHost)
         {
-            _switchLoginDelegate?.Invoke(userName, password);
+            _logonConfig.VirtualHost = vHost;
+        }
+
+        private static void LoginAs(string userName, string password)
+        {
+            _logonConfig.Username = userName;
+            _logonConfig.Password = password;
         }
 
         private static void ExecuteBatch(IConnection connection, RawRabbitConfiguration configuration, string batchFileName, string subFolder = "")
@@ -607,7 +618,7 @@ namespace RabbitCli
 
                 try
                 {
-                    channel.ExchangeUnbind(exchangeNameTo, exchangeNameFrom, routingKey);
+                    channel.ExchangeUnbind(exchangeNameTo, exchangeNameFrom, routingKey, args);
                     Console.WriteLine("Done!");
                 }
                 catch (Exception ex)
@@ -676,7 +687,7 @@ namespace RabbitCli
                         var alternateExchangeName = GetAlternateExchangeName(exchangeConfig.ExchangeName);
                         modelBuilder.DeleteExchange(alternateExchangeName);
 
-                        modelBuilder.Model.QueueDelete($"{exchangeConfig.ExchangeName}-{UNROUTED_NAME}Messages-Queue");
+                        modelBuilder.Model.QueueDelete($"{alternateExchangeName}-UnroutedMessages-Queue");
                     }
 
                 }
@@ -742,14 +753,14 @@ namespace RabbitCli
             }
         }
 
-        private static string GetExchangeNameWithoutPostfix(ExchangeModelConfig exchangeConfig)
-        {
-            var lastIndexPos = exchangeConfig.ExchangeName.LastIndexOf("-", StringComparison.Ordinal);
-            var exchangeNameWithoutPostfix = lastIndexPos > 0
-                ? exchangeConfig.ExchangeName.Substring(0, lastIndexPos)
-                : exchangeConfig.ExchangeName;
-            return exchangeNameWithoutPostfix;
-        }
+        //private static string GetExchangeNameWithoutPostfix(ExchangeModelConfig exchangeConfig)
+        //{
+        //    var lastIndexPos = exchangeConfig.ExchangeName.LastIndexOf("-", StringComparison.Ordinal);
+        //    var exchangeNameWithoutPostfix = lastIndexPos > 0
+        //        ? exchangeConfig.ExchangeName.Substring(0, lastIndexPos)
+        //        : exchangeConfig.ExchangeName;
+        //    return exchangeNameWithoutPostfix;
+        //}
 
         private static string GetAlternateExchangeName(string exchangeName)
         {
@@ -758,7 +769,7 @@ namespace RabbitCli
             //    ? exchangeName.Substring(0, lastIndexPos)
             //    : exchangeName;
             //var postFix = lastIndexPos > 0 ? exchangeName.Substring(lastIndexPos) : "";
-            var alternateExchangeName = $"{exchangeName}-{UNROUTED_NAME}";
+            var alternateExchangeName = $"{exchangeName}-Unrouted";
             return alternateExchangeName;
         }
 
@@ -781,7 +792,7 @@ namespace RabbitCli
 
         private static void RunScenario(IConnection connection, string scenarioName, string simulationPath)
         {
-            ScenarioConfigFile scenario = null;
+            ScenarioConfigFile scenario;
             try
             {
                 scenario = Utils.LoadJson<ScenarioConfigFile>(Path.Combine("Scenarios", scenarioName + ".json"));
@@ -796,7 +807,6 @@ namespace RabbitCli
                 return;
 
             _lastScenario = scenarioName;
-            _lastSimulation = simulationPath;
 
             if (scenario == null)
             {
@@ -922,7 +932,6 @@ namespace RabbitCli
                             catch (Exception e)
                             {
                                 WriteError(e.Message);
-                                continue;
                             }
                         }
 
@@ -944,8 +953,7 @@ namespace RabbitCli
 
                         var routingKeyOut = route.To;
                         if (routingKeyOut == null)
-                            throw new ConfigurationErrorsException(
-                                $"Could not find routingKey 'To' for publishing in env '{simConfig.ExchangeName}'. Check {simulationFile}.");
+                            throw new ConfigurationErrorsException($"Could not find routingKey 'To' for publishing in env '{simConfig.ExchangeName}'. Check {simulationFile}.");
 
                         var sim = new SimulationRouter(channel, $"{simConfig.ExchangeName}",
                             queueBinding.QueueName,
@@ -1195,26 +1203,178 @@ namespace RabbitCli
             }
         }
 
-
-        private static void MoveMessages(IConnection connection, string queueName, string exchangeName, string routingKey)
+        [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
+        private static void MoveMessagesToQueue(IConnection connection, string queueName, string targetQueueName, string routingKey)
         {
             var runId = Guid.NewGuid();
-            var runIdExchangeName = $"{runId}_RABBITCLI_MM";
+            var runIdFilteredExchangeName = $"MMQ_RABBITCLI_FILTERED_{runId}";
+            var runIdMoveExchangeName = $"MMQ_RABBITCLI_MOVE_{runId}";
             using (var channel = new ModelBuilder(connection).Model)
             {
+                uint currentMessageCountInQueue;
                 try
                 {
-                    channel.ExchangeDeclare(runIdExchangeName, "topic", false, true);
-                    channel.QueueBind(queueName, runIdExchangeName, "#");
+                    var declareOk = channel.QueueDeclarePassive(queueName);
+                    currentMessageCountInQueue = declareOk.MessageCount;
+                }
+                catch (Exception)
+                {
+                    WriteError($"Unknown queue: '{queueName}'!");
+                    return;
+                }
+
+                try
+                {
+                    channel.QueueDeclarePassive(targetQueueName);
+                }
+                catch (Exception)
+                {
+                    WriteError($"Unknown queue: '{targetQueueName}'!");
+                    return;
+                }
+
+                try
+                {
+                    channel.ExchangeDeclare(runIdMoveExchangeName, "topic", false, true);
+                    channel.QueueBind(targetQueueName, runIdMoveExchangeName, "#");
                 }
                 catch (Exception e)
                 {
-                    WriteError($"Couldn't create temporary move message exchange: '{runIdExchangeName}'!");
+                    WriteError($"Couldn't create and bind temporary move message exchange: '{runIdMoveExchangeName}' to queue '{targetQueueName}'! Message: {e.Message}.");
                     return;
                 }
+
                 try
                 {
-                    channel.ExchangeDeclarePassive(exchangeName);
+                    channel.ExchangeDeclare(runIdFilteredExchangeName, "topic", false, true);
+                    channel.QueueBind(queueName, runIdFilteredExchangeName, "#");
+                }
+                catch (Exception e)
+                {
+                    WriteError($"Couldn't create and bind temporary filtered message exchange: '{runIdFilteredExchangeName}' to queue '{queueName}'! Message: {e.Message}.");
+                    return;
+                }
+
+                string subscription = null;
+                try
+                {
+                    var startMessage = $"Moving messages from queue '{queueName}' to queue '{targetQueueName}'";
+                    if (!string.IsNullOrEmpty(routingKey))
+                    {
+                        startMessage += $" (filtered by RoutingKey '{routingKey}')";
+                    }
+                    Console.WriteLine(startMessage);
+
+                    Console.Write("[");
+                    var messageCount = 0;
+                    var filteredMessageCount = 0;
+                    var isRunning = true;
+                    var locker = new object();
+
+                    var consumer = new EventingBasicConsumer(channel);
+
+                    void OnConsumerReceived(object sender, BasicDeliverEventArgs e)
+                    {
+                        var receivedRunId = "";
+                        if (e.BasicProperties.Headers.ContainsKey("RunId"))
+                        {
+                            receivedRunId = Encoding.UTF8.GetString((byte[])e.BasicProperties.Headers["RunId"]);
+                        }
+
+                        lock (locker)
+                        {
+                            // Skip message consume, if we should stop running or we already processed this message in current run.
+                            if (runId.ToString() == receivedRunId)
+                            {
+                                channel.BasicReject(e.DeliveryTag, true);
+                                isRunning = false;
+                                return;
+                            }
+                        }
+
+                        // Mark message with current run id to identify already processed messages.
+                        e.BasicProperties.Headers["RunId"] = runId.ToString();
+
+                        // Filtered messages are sent to source queue again (marked with current run id to avoid duplicate processing).
+                        if (!string.IsNullOrEmpty(routingKey) && !RoutingkeyMatches(routingKey, e.RoutingKey))
+                        {
+                            lock (locker)
+                            {
+                                filteredMessageCount++;
+                            }
+
+                            channel.BasicPublish(runIdFilteredExchangeName, e.RoutingKey, e.BasicProperties, e.Body);
+                            channel.BasicAck(e.DeliveryTag, false);
+                            return;
+                        }
+
+                        lock (locker)
+                        {
+                            messageCount++;
+                        }
+
+                        channel.BasicPublish(runIdMoveExchangeName, e.RoutingKey, e.BasicProperties, e.Body);
+                        channel.BasicAck(e.DeliveryTag, false);
+                        Console.Write("=");
+                    }
+
+                    consumer.Received += OnConsumerReceived;
+
+                    subscription = channel.BasicConsume(queueName, false, consumer);
+
+                    while (isRunning)
+                    {
+                        lock (locker)
+                        {
+                            // We check on greater or equal instead of only equal because more messages could be already inserted as we started moving the messages.
+                            if ((messageCount + filteredMessageCount) >= currentMessageCountInQueue)
+                            {
+                                break;
+                            }
+                        }
+
+                        // wait
+                        Thread.Sleep(200);
+                    }
+
+                    consumer.Received -= OnConsumerReceived;
+
+                    Console.WriteLine("]");
+                    var resultMessage = $"Moved {messageCount} messages out of {messageCount + filteredMessageCount}";
+                    if (filteredMessageCount > 0)
+                    {
+                        resultMessage += $" ({filteredMessageCount} filtered by RoutingKey '{routingKey}')";
+                    }
+                    Console.WriteLine(resultMessage);
+                }
+                catch (Exception ex)
+                {
+                    WriteError("Error moving messages: " + ex.Message);
+                }
+                finally
+                {
+                    channel.ExchangeDelete(runIdFilteredExchangeName, false);
+                    channel.ExchangeDelete(runIdMoveExchangeName, false);
+                    if (subscription != null)
+                    {
+                        channel.BasicCancel(subscription);
+                    }
+                }
+            }
+        }
+
+        [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
+        private static void MoveMessages(IConnection connection, string queueName, string exchangeName, string routingKey)
+        {
+            var runId = Guid.NewGuid();
+            var runIdFilteredExchangeName = $"MM_RABBITCLI_FILTERED_{runId}";
+            using (var channel = new ModelBuilder(connection).Model)
+            {
+                uint currentMessageCountInQueue;
+                try
+                {
+                    var declareOk = channel.QueueDeclarePassive(queueName);
+                    currentMessageCountInQueue = declareOk.MessageCount;
                 }
                 catch (Exception)
                 {
@@ -1230,32 +1390,61 @@ namespace RabbitCli
                     WriteError($"Unknown queue: '{queueName}'!");
                     return;
                 }
+                try
+                {
+                    channel.ExchangeDeclare(runIdFilteredExchangeName, "topic", false, true);
+                    channel.QueueBind(queueName, runIdFilteredExchangeName, "#");
+                }
+                catch (Exception e)
+                {
+                    WriteError($"Couldn't create and bind temporary filtered message exchange: '{runIdFilteredExchangeName}' to queue '{queueName}'! Message: {e.Message}.");
+                    return;
+                }
 
                 string subscription = null;
                 try
                 {
-                    Console.WriteLine($"Moving messages from queue '{queueName}' ... ");
+                    var startMessage = $"Moving messages from queue '{queueName}' to exchange '{exchangeName}'";
+                    if (!string.IsNullOrEmpty(routingKey))
+                    {
+                        startMessage += $" (filtered by RoutingKey '{routingKey}')";
+                    }
+                    Console.WriteLine(startMessage);
+
+                    Console.Write("[");
                     var messageCount = 0;
+                    var filteredMessageCount = 0;
                     var isRunning = true;
+                    var locker = new object();
 
                     var consumer = new EventingBasicConsumer(channel);
-                    object locker = new object();
 
-                    consumer.Received += (sender, e) =>
+                    void OnConsumerReceived(object sender, BasicDeliverEventArgs e)
                     {
+                        var receivedRunId = "";
+                        if (e.BasicProperties.Headers.ContainsKey("RunId"))
+                        {
+                            receivedRunId = Encoding.UTF8.GetString((byte[])e.BasicProperties.Headers["RunId"]);
+                        }
+
                         // Skip message consume, if we should stop running or we already processed this message in current run.
-                        if (!isRunning || (e.BasicProperties.Headers.ContainsKey("RunId") && runId.ToString() ==
-                                           Encoding.UTF8.GetString((byte[])e.BasicProperties.Headers["RunId"])))
+                        if (runId.ToString() == receivedRunId)
                         {
                             channel.BasicReject(e.DeliveryTag, true);
                             isRunning = false;
                             return;
                         }
 
-                        if (!String.IsNullOrEmpty(routingKey) && !RoutingkeyMatches(routingKey, e.RoutingKey))
+                        e.BasicProperties.Headers["RunId"] = runId.ToString();
+
+                        if (!string.IsNullOrEmpty(routingKey) && !RoutingkeyMatches(routingKey, e.RoutingKey))
                         {
-                            e.BasicProperties.Headers["RunId"] = runId.ToString();
-                            channel.BasicPublish(runIdExchangeName, e.RoutingKey, e.BasicProperties, e.Body);
+                            lock (locker)
+                            {
+                                filteredMessageCount++;
+                            }
+
+                            channel.BasicPublish(runIdFilteredExchangeName, e.RoutingKey, e.BasicProperties, e.Body);
                             channel.BasicAck(e.DeliveryTag, false);
                             return;
                         }
@@ -1266,27 +1455,47 @@ namespace RabbitCli
                         }
 
                         channel.BasicPublish(exchangeName, e.RoutingKey, e.BasicProperties, e.Body);
-                        Console.Write(".");
-                    };
+                        channel.BasicAck(e.DeliveryTag, false);
+                        Console.Write("=");
+                    }
+
+                    consumer.Received += OnConsumerReceived;
 
                     subscription = channel.BasicConsume(queueName, false, consumer);
 
                     while (isRunning)
                     {
+                        lock (locker)
+                        {
+                            // We check on greater or equal instead of only equal because more messages could be already inserted as we started moving the messages.
+                            if ((messageCount + filteredMessageCount) >= currentMessageCountInQueue)
+                            {
+                                break;
+                            }
+                        }
+
                         // wait
-                        Thread.Sleep(100);
+                        Thread.Sleep(200);
                     }
 
-                    Console.WriteLine($"Moved {messageCount} messages!");
+                    consumer.Received -= OnConsumerReceived;
+
+                    Console.WriteLine("]");
+
+                    var resultMessage = $"Moved {messageCount} messages out of {messageCount + filteredMessageCount}";
+                    if (filteredMessageCount > 0)
+                    {
+                        resultMessage += $" ({filteredMessageCount} filtered by RoutingKey '{routingKey}')";
+                    }
+                    Console.WriteLine(resultMessage);
                 }
                 catch (Exception ex)
                 {
                     WriteError("Error moving messages: " + ex.Message);
-
                 }
                 finally
                 {
-                    channel.ExchangeDelete(runIdExchangeName, false);
+                    channel.ExchangeDelete(runIdFilteredExchangeName, false);
                     if (subscription != null)
                     {
                         channel.BasicCancel(subscription);

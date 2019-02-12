@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -29,8 +28,6 @@ namespace RabbitCli.Infrastructure
 
         protected virtual void Consume(object sender, BasicDeliverEventArgs e)
         {
-            var body = e.Body;
-            var message = Encoding.UTF8.GetString(body);
             var color = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"[{Name}] Received message from exchange '{e.Exchange}' with routingkey '{e.RoutingKey}'.");

@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace RabbitCli.Infrastructure
+﻿namespace RabbitCli.Infrastructure
 {
     public class ScenarioConfigFile
     {

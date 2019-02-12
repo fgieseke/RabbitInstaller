@@ -9,12 +9,8 @@ using RawRabbit.Serialization;
 
 namespace RabbitCli.Infrastructure
 {
-    #region Using
-
-    #endregion
-
     /// <summary>
-    /// The json message serializer used by <see cref="ServiceBusClient"/>.
+    /// The json message serializer used by RabbitMq />.
     /// <remarks>
     /// This implementation replaces the original implementation because adding the capability of serializing and deserializing 
     /// dynamic properties without exceptions.

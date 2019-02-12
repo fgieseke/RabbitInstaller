@@ -21,10 +21,9 @@ namespace RabbitCli.Infrastructure
         private readonly List<ISimulationEmitter> _simulationPublishers;
         private readonly List<ISimulationConsumer> _simulationConsumers;
 
-        private static Dictionary<string, ExchangeConfiguration> _exchangeMap;
 
         /// <summary>
-        /// Builds a modlel according to the setup.json file
+        /// Builds a model according to the setup.json file
         /// </summary>
         /// <remarks>
         /// This component replaces RawRabbit.vNext.BusClientFactory in order to avoid heavy dependency "pollution", but at
@@ -37,7 +36,6 @@ namespace RabbitCli.Infrastructure
             _model = connection.CreateModel();
             _simulationPublishers = new List<ISimulationEmitter>();
             _simulationConsumers = new List<ISimulationConsumer>();
-            _exchangeMap = new Dictionary<string, ExchangeConfiguration>();
         }
 
         public IModel Model => _model;
@@ -46,8 +44,6 @@ namespace RabbitCli.Infrastructure
         {
             try
             {
-                _exchangeMap.Add(exchangeConfig.ExchangeName, exchangeConfig);
-
                 Console.Write($"Creating exchange '{exchangeConfig.ExchangeName}'... ");
 
                 _model.ExchangeDeclare(exchangeConfig.ExchangeName, exchangeConfig.ExchangeType.ToLower(), exchangeConfig.Durable, exchangeConfig.AutoDelete, exchangeConfig.Arguments);
@@ -63,8 +59,6 @@ namespace RabbitCli.Infrastructure
         }
         public ModelBuilder DeleteExchange(string exchangeName)
         {
-            _exchangeMap.Remove(exchangeName);
-
             Console.Write($"Deleting exchange '{exchangeName}'... ");
             try
             {

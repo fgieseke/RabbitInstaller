@@ -24,7 +24,7 @@ namespace RabbitCli.Infrastructure
             }
 
             if (referenceFile != null)
-                return UpdateByReference(connection, vHost, exchange, referenceFile);
+                return UpdateByReference(vHost, exchange, referenceFile);
 
             Console.WriteLine($"Creating environment for '{exchange}'.");
             try
@@ -32,7 +32,7 @@ namespace RabbitCli.Infrastructure
                 var defaultVal = $"{exchange}-In";
                 envConfig.ExchangeName = Utils.ReadFromConsole("Exchangename", defaultVal);
 
-                var createNew = true;
+                bool createNew;
                 var consumerList = new List<ConsumerElement>();
                 var routerList = new List<RouterElement>();
                 do
@@ -77,7 +77,7 @@ namespace RabbitCli.Infrastructure
             return envConfig;
         }
 
-        private static SimulationConfig UpdateByReference(IConnection connection, string vHost, string exchange, string referenceFile)
+        private static SimulationConfig UpdateByReference(string vHost, string exchange, string referenceFile)
         {
             var envConfig = new SimulationConfig();
             var fullFile = Utils.GetExportFile(referenceFile);

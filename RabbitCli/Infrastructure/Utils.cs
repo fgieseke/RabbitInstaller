@@ -90,8 +90,8 @@ namespace RabbitCli.Infrastructure
 
         public static string ReadFromConsole(string text, string defaultVal = null, string[] validValues = null)
         {
-            var val = "";
-            var isValid = true;
+            string val;
+            bool isValid;
             do
             {
 
@@ -110,7 +110,7 @@ namespace RabbitCli.Infrastructure
                 if (val?.ToLower() == "x")
                     throw new Exception("User cancelled.");
 
-                if (String.IsNullOrEmpty(val))
+                if (string.IsNullOrEmpty(val))
                 {
                     if (defaultVal != null)
                         return defaultVal;
